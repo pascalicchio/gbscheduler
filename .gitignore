@@ -1,0 +1,17 @@
+# Database credentials
+db.php
+
+# SQL dumps
+*.sql
+
+# macOS system files
+.DS_Store
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment files
+.env

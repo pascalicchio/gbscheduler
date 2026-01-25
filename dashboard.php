@@ -6,33 +6,51 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
-date_default_timezone_set('America/New_York'); // Set your timezone
+date_default_timezone_set('America/New_York');
 
-// --- USER ROLE AND PERMISSION SETUP ---
 $user_role = $_SESSION['user_role'] ?? 'guest';
 $user_id = $_SESSION['user_id'];
-$user_name = $_SESSION['user_name'] ?? 'Coach';
 
-// Roles: 'admin' for full control, 'user' for coach/employee
+// PERMISSIONS
 $is_admin = ($user_role === 'admin');
+$is_manager = ($user_role === 'manager');
 $is_coach = ($user_role === 'user');
-$can_view_schedule = $is_admin || $is_coach;
 
-// 1. Fetch Locations for the filter dropdown
-$stmt_locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC");
-$locations = $stmt_locations->fetchAll(PDO::FETCH_ASSOC);
+// "Can Manage" = Access to sidebar tools
+$can_view_tools = ($is_admin || $is_manager);
 
-// --- LOCATION & MARTIAL ART FILTER LOGIC ---
+// 1. Fetch Locations
+try {
+    $stmt_locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC");
+    $locations = $stmt_locations->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $locations = [];
+}
+
+// Filters
 $default_location_id = !empty($locations) ? $locations[0]['id'] : '0';
-
-// Use the location ID from the URL, or the first location's ID as the default
 $filter_location_id = $_GET['location'] ?? $default_location_id;
-
-// *** FIX 1: DEFAULT MARTIAL ART FILTER IS 'bjj' ***
 $martial_art_filter = $_GET['martial_art'] ?? 'bjj';
 
-// Find the name of the currently selected location for the H1 tag
-$current_location_name = "Schedule"; // Fallback name
+// Dates
+$requested_date = $_GET['week_start'] ?? date('Y-m-d');
+$start_of_week = date('Y-m-d', strtotime('monday this week', strtotime($requested_date)));
+$end_of_week = date('Y-m-d', strtotime('sunday this week', strtotime($requested_date)));
+$days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+$prev_week_start = date('Y-m-d', strtotime($start_of_week . ' - 7 days'));
+$next_week_start = date('Y-m-d', strtotime($start_of_week . ' + 7 days'));
+$base_url = 'dashboard.php';
+$location_param = ($filter_location_id !== '0') ? '&location=' . urlencode($filter_location_id) : '';
+$martial_art_param = ($martial_art_filter !== 'all') ? '&martial_art=' . urlencode($martial_art_filter) : '';
+
+// --- NEW LOCK LOGIC ---
+$stmt_lock = $pdo->prepare("SELECT is_locked FROM schedule_locks WHERE location_id = ? AND martial_art = ? AND week_start = ?");
+$stmt_lock->execute([$filter_location_id, $martial_art_filter, $start_of_week]);
+$is_locked_db = $stmt_lock->fetchColumn();
+$is_locked = $is_locked_db ? true : false;
+
+$current_location_name = "Schedule";
 if (!empty($locations)) {
     foreach ($locations as $loc) {
         if ((string)$loc['id'] === (string)$filter_location_id) {
@@ -41,185 +59,164 @@ if (!empty($locations)) {
         }
     }
 }
-// ----------------------------------------
 
-// 2. Fetch Coaches for sidebar (filtered by location) - Admin Only
+$art_display = ($martial_art_filter === 'mt') ? 'Muay Thai' : 'Jiu-Jitsu';
+
+// 2. Fetch Coaches (ONLY needed for Admin sidebar now)
+// ADDED: is_active filter
 $coaches = [];
 if ($is_admin) {
-    // Only fetch users with the 'user' (coach) role for drag-and-drop
-    $coach_sql = "SELECT id, name, color_code FROM users WHERE role = 'user' ";
+    $coach_sql = "SELECT u.id, u.name, u.color_code 
+                  FROM users u 
+                  WHERE u.role != 'manager' 
+                  AND u.is_active = 1 "; // <-- ADDED THIS LINE
     $coach_params = [];
 
     if ($filter_location_id !== '0') {
-        $coach_sql .= " AND location = :location_id ";
+        $coach_sql .= " AND EXISTS (SELECT 1 FROM user_locations ul WHERE ul.user_id = u.id AND ul.location_id = :location_id) ";
         $coach_params['location_id'] = $filter_location_id;
     }
 
-    // *** NEW: Filter by Martial Art using the coach_type ENUM ***
     if ($martial_art_filter === 'bjj') {
-        // Coach must be designated as 'bjj' OR 'both'
-        $coach_sql .= " AND coach_type IN ('bjj', 'both') ";
+        $coach_sql .= " AND u.coach_type IN ('bjj', 'both') ";
     } elseif ($martial_art_filter === 'mt') {
-        // Coach must be designated as 'mt' OR 'both'
-        $coach_sql .= " AND coach_type IN ('mt', 'both') ";
+        $coach_sql .= " AND u.coach_type IN ('mt', 'both') ";
     }
-    // If $martial_art_filter is 'all', we don't add a filter, so all coaches are shown.
-    // ***************************************************************
 
-    $stmt_coaches = $pdo->prepare($coach_sql . " ORDER BY name ASC");
-    $stmt_coaches->execute($coach_params);
-    $coaches = $stmt_coaches->fetchAll(PDO::FETCH_ASSOC);
+    try {
+        $stmt_coaches = $pdo->prepare($coach_sql . " ORDER BY u.name ASC");
+        $stmt_coaches->execute($coach_params);
+        $coaches = $stmt_coaches->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+    }
 }
 
-
-// --- 3. WEEKLY SCHEDULE DATA PREPARATION & NAVIGATION ---
-
-// Determine the starting Monday for the week being viewed from URL parameter
-$requested_date = $_GET['week_start'] ?? date('Y-m-d');
-
-// Calculate the start (Monday) and end (Sunday) of the requested week
-$start_of_week = date('Y-m-d', strtotime('monday this week', strtotime($requested_date)));
-$end_of_week = date('Y-m-d', strtotime('sunday this week', strtotime($requested_date)));
-
-$days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-
-// --- NAVIGATION LINK GENERATION ---
-
-$prev_week_start = date('Y-m-d', strtotime($start_of_week . ' - 7 days'));
-$next_week_start = date('Y-m-d', strtotime($start_of_week . ' + 7 days'));
-
-// Create a common URL parameter string to preserve the filters across navigation
-$location_param = ($filter_location_id !== '0') ? '&location=' . urlencode($filter_location_id) : '';
-// *** FIX 3: ADD MARTIAL ART PARAMETER ***
-$martial_art_param = ($martial_art_filter !== 'all') ? '&martial_art=' . urlencode($martial_art_filter) : '';
-
-$base_url = 'dashboard.php';
-
-
-// Function to retrieve and format the schedule data
-// *** FIX 4: ADD martial_art_filter TO FUNCTION SIGNATURE ***
+// --- DATA FETCHING ---
 function get_schedule_data($pdo, $location_id, $start_date, $end_date, $user_role, $user_id, $martial_art_filter)
 {
+    $days_of_week_internal = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    $days_map = array_flip($days_of_week_internal);
+    $start_timestamp = strtotime($start_date);
 
-    $params = [
-        'start_date' => $start_date . ' 00:00:00',
-        'end_date' => $end_date . ' 23:59:59'
-    ];
+    $params = [];
+    $where = ["1=1"];
+    $sql = "SELECT id AS template_id, class_name, day_of_week, start_time, end_time, location_id FROM class_templates";
 
-    // 3.1. Fetch all events (slots) and their assignments for the week
-    $sql = "
-        SELECT
-            se.id AS event_id,
-            se.title AS class_title,
-            se.start_datetime,
-            se.end_datetime,
-            ea.user_id,
-            u.name AS coach_name,
-            u.color_code,
-            ea.position
-        FROM
-            schedule_events se
-        LEFT JOIN 
-            event_assignments ea ON se.id = ea.event_id
-        LEFT JOIN
-            users u ON ea.user_id = u.id
-        WHERE
-            se.start_datetime BETWEEN :start_date AND :end_date
-    ";
-
-
-    // Apply location filter
     if ($location_id !== '0') {
-        $sql .= " AND se.location_id = :location_id";
+        $where[] = "location_id = :location_id";
         $params['location_id'] = $location_id;
     }
-
-    // *** FIX 4b: APPLY MARTIAL ART FILTER TO QUERY ***
     if ($martial_art_filter !== 'all') {
-        $sql .= " AND se.martial_art = :martial_art_filter";
+        $where[] = "martial_art = :martial_art_filter";
         $params['martial_art_filter'] = $martial_art_filter;
     }
-    // --------------------------------------------------
 
-    // FIX FOR USER (COACH) VIEW: Filter the schedule to show only classes THIS COACH is assigned to
-    if ($user_role === 'user') {
-        $sql .= " AND se.id IN (
-            SELECT DISTINCT event_id FROM event_assignments WHERE user_id = :coach_id
-        )";
-        $params['coach_id'] = $user_id; // Use the logged-in user's ID
+    $sql .= " WHERE " . implode(' AND ', $where) . " ORDER BY start_time ASC";
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (PDOException $e) {
+        return [];
     }
 
-
-    $sql .= " ORDER BY se.start_datetime ASC, FIELD(ea.position, 'head', 'helper') ASC";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $raw_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // 3.2. Restructure the data into a grid format (rest of the function remains the same)
     $schedule_grid = [];
+    $required_assignments = [];
 
-    foreach ($raw_data as $row) {
-        $start_time = date('H:i', strtotime($row['start_datetime']));
-        $day_of_week = date('l', strtotime($row['start_datetime'])); // Full day name (e.g., Tuesday)
-        $date_key = date('Y-m-d', strtotime($row['start_datetime']));
-
-        $key = $start_time . '|' . $row['class_title'];
-
+    foreach ($templates as $template) {
+        $key = $template['start_time'] . '|' . $template['class_name'];
         if (!isset($schedule_grid[$key])) {
             $schedule_grid[$key] = [
-                'start_time' => $start_time,
-                'class_title' => $row['class_title'],
-                'data' => []
+                'start_time' => $template['start_time'],
+                'class_title' => $template['class_name'],
+                'data' => array_fill_keys($days_of_week_internal, null)
             ];
-            foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $day) {
-                $schedule_grid[$key]['data'][$day] = null;
+        }
+
+        $day_name = $template['day_of_week'];
+        if (!isset($days_map[$day_name])) continue;
+
+        $day_index = $days_map[$day_name];
+        $class_date = date('Y-m-d', strtotime("+$day_index days", $start_timestamp));
+
+        $schedule_grid[$key]['data'][$day_name] = [
+            'template_id' => $template['template_id'],
+            'date' => $class_date,
+            'end_time' => $template['end_time'],
+            'coaches' => []
+        ];
+        $required_assignments[] = ['template_id' => $template['template_id'], 'class_date' => $class_date];
+    }
+
+    $assigned_coaches = [];
+    if (!empty($required_assignments)) {
+        $conds = [];
+        $aparams = [];
+        $i = 0;
+        foreach ($required_assignments as $ra) {
+            $conds[] = "(ea.template_id = :t$i AND ea.class_date = :d$i)";
+            $aparams["t$i"] = $ra['template_id'];
+            $aparams["d$i"] = $ra['class_date'];
+            $i++;
+        }
+
+        if (!empty($conds)) {
+            $asql = "SELECT ea.template_id, ea.class_date, ea.user_id, u.name AS coach_name, u.color_code, ea.position 
+                     FROM event_assignments ea JOIN users u ON ea.user_id = u.id 
+                     WHERE " . implode(' OR ', $conds) . " ORDER BY ea.sort_order ASC, ea.position";
+            try {
+                $stmt = $pdo->prepare($asql);
+                $stmt->execute($aparams);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                foreach ($rows as $row) {
+                    $assigned_coaches[$row['template_id'] . '|' . $row['class_date']][] = $row;
+                }
+            } catch (Exception $e) {
             }
-        }
-
-        if (!isset($schedule_grid[$key]['data'][$day_of_week])) {
-            $schedule_grid[$key]['data'][$day_of_week] = [
-                'event_id' => $row['event_id'],
-                'date' => $date_key,
-                'end_time' => date('H:i', strtotime($row['end_datetime'])),
-                'coaches' => []
-            ];
-        }
-
-        if ($row['user_id']) {
-            $schedule_grid[$key]['data'][$day_of_week]['coaches'][] = [
-                'id' => $row['user_id'],
-                'name' => $row['coach_name'],
-                'position' => $row['position'],
-                'color' => $row['color_code']
-            ];
         }
     }
 
-    $final_schedule = [];
-    foreach ($schedule_grid as $row) {
-        $has_event = false;
-        foreach ($row['data'] as $day_data) {
-            if ($day_data !== null) {
-                $has_event = true;
-                break;
+    foreach ($schedule_grid as &$row) {
+        foreach ($days_of_week_internal as $day) {
+            if ($row['data'][$day]) {
+                $tid = $row['data'][$day]['template_id'];
+                $cdate = $row['data'][$day]['date'];
+                $k = "$tid|$cdate";
+                if (isset($assigned_coaches[$k])) {
+                    $row['data'][$day]['coaches'] = $assigned_coaches[$k];
+                }
             }
         }
-        if ($has_event) {
-            $final_schedule[] = $row;
-        }
     }
+    unset($row);
 
-    usort($final_schedule, function ($a, $b) {
+    if ($user_role === 'user') {
+        $final = [];
+        foreach ($schedule_grid as $row) {
+            $found = false;
+            foreach ($row['data'] as $d) {
+                if ($d && !empty($d['coaches'])) {
+                    foreach ($d['coaches'] as $c) {
+                        if ($c['user_id'] == $user_id) {
+                            $found = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+            if ($found) $final[] = $row;
+        }
+        $schedule_grid = $final;
+    } else {
+        $schedule_grid = array_values($schedule_grid);
+    }
+    usort($schedule_grid, function ($a, $b) {
         return strtotime($a['start_time']) - strtotime($b['start_time']);
     });
-
-    return $final_schedule;
+    return $schedule_grid;
 }
 
-// Get the scheduled data for the current view
-// *** FIX 5: PASS THE NEW FILTER VARIABLE TO THE FUNCTION ***
 $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $end_of_week, $user_role, $user_id, $martial_art_filter);
 ?>
 
@@ -228,543 +225,755 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 
 <head>
     <title>GB Schedule</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
     <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-dark: #0056b3;
+            --secondary-dark: #2c3e50;
+            --bg-color: #f4f6f9;
+            --sidebar-color: #ffffff;
+            --text-color: #333;
+        }
+
         body {
             display: flex;
             font-family: sans-serif;
+            margin: 0;
+            background: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
         }
 
         #sidebar {
-            width: 300px;
+            width: 320px;
             padding: 20px;
-            background: #f4f4f4;
+            background: var(--sidebar-color);
+            border-right: 1px solid #e1e4e8;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
             flex-shrink: 0;
-
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            z-index: 1000;
+            z-index: 20;
+            transition: all 0.3s ease;
         }
 
-        #calendar-container {
-            flex-grow: 1;
-            padding: 20px;
-            overflow-x: auto;
+        .filter-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
 
-        /* Coach Draggable styling */
-        .coach-draggable {
-            background: white;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 5px;
-            cursor: move;
-            font-size: 0.9em;
-        }
-
-        /* Custom Schedule Styling */
-        #custom-schedule {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        #custom-schedule thead th {
-            background: #333;
-            color: white;
-            padding: 10px;
-            border-left: 1px solid #555;
-            text-align: center;
-            width: calc((100% - 150px) / 7);
-        }
-
-        #custom-schedule tbody td {
-            border: 1px solid #ddd;
-            vertical-align: middle;
-            padding: 5px;
-            height: 80px;
-            position: relative;
-        }
-
-        .time-header {
-            width: 150px;
-            background: #eee;
-            border-right: 1px solid #ccc;
-            font-weight: bold;
-            text-align: center;
-            padding: 5px;
-            line-height: 1.2;
-        }
-
-        /* Class Slot Styling */
-        .class-slot {
-            background: #f8f8f8;
-            border: 1px solid #ccc;
-            min-height: 70px;
-            padding: 5px;
-        }
-
-        .coach-assignment {
+        .filter-box label {
             font-size: 0.85em;
-            padding: 2px 4px;
-            margin-bottom: 2px;
-            border-radius: 3px;
-            color: #333;
-            cursor: move;
+            font-weight: bold;
+            color: #555;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: white;
+        }
+
+        /* Draggable Styles */
+        .coaches-table-fi {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 5px 0;
+        }
+
+        .coach-draggable {
+            border: 1px solid #ccc;
+            padding: 8px;
+            margin-bottom: 5px;
+            cursor: grab;
+            font-size: 0.9em;
+            border-radius: 4px;
+            transition: all 0.2s;
+            background: white;
+            text-align: center;
+        }
+
+        .coach-draggable:hover {
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
         }
 
         .coach-head {
-            font-weight: bold;
-            background: #e0f7fa;
-            border-left: 3px solid;
+            border: 2px solid;
+            background: white;
         }
 
         .coach-helper {
-            background: #fff3e0;
-            border-left: 3px solid;
+            border: 1px dashed #ccc;
+            background: #f0f0f0;
         }
 
-        .coaches-table-fi td {
-            width: 50%;
+        #calendar-container {
+            flex: 1;
+            padding: 25px;
+            overflow: auto;
+            position: relative;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-btn {
+            text-decoration: none;
+            color: var(--secondary-dark);
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 4px;
+            background: #f0f0f0;
+            transition: background 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .nav-btn:hover {
+            background: #e0e0e0;
+        }
+
+        /* ADDED: Lock States */
+        .btn-lock {
+            background: #dc3545;
+            color: white;
+            margin-left: 15px;
+        }
+
+        .btn-unlock {
+            background: #ffc107;
+            color: #333;
+            margin-left: 15px;
+        }
+
+        .locked-mode {
+            pointer-events: none;
+            opacity: 0.6;
+            filter: grayscale(80%);
+        }
+
+        #custom-schedule {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            table-layout: fixed;
+            overflow: hidden;
+        }
+
+        #custom-schedule th {
+            background: var(--secondary-dark);
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #custom-schedule tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        #custom-schedule tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        #custom-schedule td {
+            border-bottom: 1px solid #f0f0f0;
+            border-right: 1px solid #f0f0f0;
+            vertical-align: top;
+            padding: 0;
+            height: auto;
+        }
+
+        .time-col {
+            width: 140px;
+            position: sticky;
+            left: 0;
+            z-index: 11;
+            border-right: 2px solid #e1e4e8 !important;
+            background-color: inherit;
+        }
+
+        .time-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+            height: 100%;
+            padding: 15px;
+        }
+
+        .time-text {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--secondary-dark);
+        }
+
+        .class-text {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .bulk-btn {
+            margin-top: 8px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .bulk-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .slot {
+            height: auto;
+            min-height: 50px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background-color: transparent;
+        }
+
+        .assignment {
+            font-size: 0.85em;
+            padding: 6px 8px;
+            border-radius: 4px;
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            cursor: move;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .del-btn {
+            color: #e74c3c;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .ui-draggable-dragging {
+            transition: none !important;
+            transform: none !important;
+            pointer-events: none;
+            z-index: 999999 !important;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .ui-sortable-placeholder {
+            border: 1px dashed #ccc;
+            visibility: visible !important;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            height: 35px;
+        }
+
+        .ui-state-hover {
+            background: #e3f2fd !important;
+            box-shadow: inset 0 0 0 2px var(--primary-color) !important;
+        }
+
+        .sidebar-link {
+            color: var(--secondary-dark);
+            text-decoration: none;
+            display: block;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            transition: color 0.2s;
+        }
+
+        .sidebar-link:hover {
+            color: var(--primary-color);
+            padding-left: 5px;
+        }
+
+        body.screenshot-mode {
+            height: auto !important;
+            overflow: visible !important;
+            background-color: #fff !important;
+        }
+
+        body.screenshot-mode #sidebar {
+            display: none !important;
+        }
+
+        body.screenshot-mode #calendar-container {
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+            flex: none !important;
+            padding: 20px !important;
+            width: 100% !important;
+        }
+
+        body.screenshot-mode .del-btn,
+        body.screenshot-mode .bulk-btn,
+        body.screenshot-mode #clone-week-btn,
+        body.screenshot-mode #download-btn,
+        body.screenshot-mode #lock-btn {
+            /* HIDE LOCK BUTTON IN SCREENSHOT */
+            display: none !important;
         }
     </style>
-
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </head>
 
 <body>
 
     <div id="sidebar">
-
-        <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; background: #fff;">
-            <label for="location-filter">Filter by Location:</label>
-            <select id="location-filter" class="form-control" style="width: 100%;padding:5px;margin-top:10px;">
-                <?php foreach ($locations as $loc): ?>
-                    <option value="<?php echo htmlspecialchars($loc['id']); ?>" <?= $loc['id'] == $filter_location_id ? 'selected' : '' ?>>
-                        <?php echo htmlspecialchars($loc['name']); ?>
-                    </option>
+        <div class="filter-box">
+            <label>Location</label>
+            <select id="loc-filter">
+                <?php foreach ($locations as $l): ?>
+                    <option value="<?= $l['id'] ?>" <?= $l['id'] == $filter_location_id ? 'selected' : '' ?>><?= $l['name'] ?></option>
                 <?php endforeach; ?>
             </select>
-
-            <div style="margin-top: 15px; margin-bottom: 10px;">
-                <label for="martial-art-filter">Filter by Martial Art:</label>
-                <select id="martial-art-filter" style="width: 100%;padding:5px;margin-top:10px;">
-                    <option value="bjj" <?= $martial_art_filter == 'bjj' ? 'selected' : '' ?>>BJJ</option>
-                    <option value="mt" <?= $martial_art_filter == 'mt' ? 'selected' : '' ?>>Muay Thai</option>
-                </select>
-            </div>
+            <label>Martial Art</label>
+            <select id="art-filter">
+                <option value="bjj" <?= $martial_art_filter == 'bjj' ? 'selected' : '' ?>>BJJ</option>
+                <option value="mt" <?= $martial_art_filter == 'mt' ? 'selected' : '' ?>>Muay Thai</option>
+            </select>
         </div>
 
         <?php if ($is_admin): ?>
-            <h3>Coaches (Admin View)</h3>
-
-            <div id="external-events">
-                <h5>Define Role Before Dragging</h5>
-
-                <table class="coaches-table-fi" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th style="font-size: 0.8em;">Head Coach</th>
-                            <th style="font-size: 0.8em;">Helper</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($coaches as $coach): ?>
-                            <tr>
-                                <td style="padding: 5px; border: none;">
-                                    <div class='coach-draggable coach-head'
-                                        data-id='<?= $coach['id'] ?>'
-                                        data-role='head'
-                                        data-color='<?= $coach['color_code'] ?>'
-                                        style="border: 2px solid <?= $coach['color_code'] ?>; background: white; padding: 5px; cursor: move;">
-                                        <?= htmlspecialchars($coach['name']) ?>
-                                    </div>
-                                </td>
-
-                                <td style="padding: 5px; border: none;">
-                                    <div class='coach-draggable coach-helper'
-                                        data-id='<?= $coach['id'] ?>'
-                                        data-role='helper'
-                                        data-color='<?= $coach['color_code'] ?>'
-                                        style="border: 1px dashed #ccc; background: #f0f0f0; padding: 5px; cursor: move;">
-                                        <?= htmlspecialchars($coach['name']) ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <h3 style="color:var(--secondary-dark); margin-top:0">Assignments</h3>
+            <div style="background:#e8f4fd; padding:10px; border-radius:6px; border:1px dashed #b6d4fe; font-size:0.85em; color:#0c5460; margin-bottom:15px;">
+                <i class="fas fa-info-circle"></i> Drag a coach onto the <b>[A] All Week</b> button to assign them to every class in that row.
             </div>
-            <hr>
-            <p><a href="users.php">Manage Users/Rates</a></p>
-            <p><a href="classes.php">Manage Master Schedule</a></p>
-            <p><a href="location_reports.php">View Payroll</a></p>
-        <?php else: ?>
-            <h3>Welcome, <?= htmlspecialchars($user_name) ?></h3>
-        <?php endif; ?>
-
-        <p><a href="reports.php">View My Financial Report</a></p>
-        <p><a href="logout.php">Log Out</a></p>
-    </div>
-
-    <div id="calendar-container">
-
-        <h1><?= htmlspecialchars($current_location_name) ?> Schedule - <? echo ($_GET['martial_art'] == 'mt' ? 'Muay Thai' : 'Jiu-Jitsu'); ?></h1>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-
-            <a href="<?= $base_url ?>?week_start=<?= $prev_week_start ?><?= $location_param ?><?= $martial_art_param ?>"
-                style="padding: 10px 15px; border: 1px solid #ccc; text-decoration: none; background: #f9f9f9; border-radius: 4px; color: #333;">
-                &lt; Previous Week
-            </a>
-
-            <div style="display: flex; gap: 20px; align-items: center;">
-                <h2 id="schedule-title" data-week-start="<?= $start_of_week ?>" style="margin: 0;">
-                    Weekly View: <?= date('M d', strtotime($start_of_week)) ?> - <?= date('M d', strtotime($end_of_week)) ?>
-                </h2>
-
-                <div class="schedule-controls">
-                    <?php if ($is_admin): ?>
-                        <button id="clone-week-btn" class="btn btn-primary" style="cursor: pointer; padding: 10px 15px; border: 1px solid #ccc; text-decoration: none; background: #f9f9f9; border-radius: 4px; color: #333;">
-                            <i class="fas fa-copy"></i> Clone to Next Week
-                        </button>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <a href="<?= $base_url ?>?week_start=<?= $next_week_start ?><?= $location_param ?><?= $martial_art_param ?>"
-                style="padding: 10px 15px; border: 1px solid #ccc; text-decoration: none; background: #f9f9f9; border-radius: 4px; color: #333;">
-                Next Week &gt;
-            </a>
-        </div>
-
-        <?php if ($can_view_schedule): // Only display the table if the user is Admin or Coach 
-        ?>
-            <table id="custom-schedule" style="width: 100%; border-collapse: collapse;">
+            <table class="coaches-table-fi">
                 <thead>
                     <tr>
-                        <th class="time-header">Time / Class</th>
-                        <?php
-                        $current_date = strtotime($start_of_week);
-                        foreach ($days_of_week as $day):
-                        ?>
-                            <th style="padding: 10px; border-left: 1px solid #555;">
-                                <?= $day ?><br>
-                                <small><?= date('M d', $current_date) ?></small>
-                            </th>
-                        <?php
-                            $current_date = strtotime('+1 day', $current_date);
-                        endforeach;
-                        ?>
+                        <th>Head Coach</th>
+                        <th>Helper</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($schedule_data as $row_key => $row_data): ?>
+                    <?php foreach ($coaches as $c): ?>
                         <tr>
-                            <td class="time-header">
-                                <?= date('g:i A', strtotime($row_data['start_time'])) ?><br>
-                                <small><?= htmlspecialchars($row_data['class_title']) ?></small>
+                            <td>
+                                <div class="coach-draggable coach-head" data-id="<?= $c['id'] ?>" data-role="head" data-color="<?= $c['color_code'] ?>" style="border-color:<?= $c['color_code'] ?>">
+                                    <?= $c['name'] ?>
+                                </div>
                             </td>
-
-                            <?php
-                            foreach ($days_of_week as $day):
-                                $event = $row_data['data'][$day];
-                            ?>
-                                <td class="schedule-cell"
-                                    data-date="<?= $event ? $event['date'] : '' ?>"
-                                    data-event-id="<?= $event ? $event['event_id'] : '' ?>"
-                                    data-day="<?= $day ?>"
-                                    style="border: 1px solid #ddd; vertical-align: top; padding: 5px; height: 80px;">
-
-                                    <?php if ($event): ?>
-                                        <div class="class-slot droppable-slot" id="slot-<?= $event['event_id'] ?>">
-                                            <?php
-                                            // List the coaches assigned to this slot
-                                            foreach ($event['coaches'] as $coach):
-                                                $class = 'coach-' . $coach['position']; // coach-head or coach-helper
-                                            ?>
-                                                <div class="coach-assignment <?= $class ?>" data-coach-id="<?= $coach['id'] ?>" data-event-id="<?= $event['event_id'] ?>" data-role="<?= $coach['position'] ?>" data-color="<?= $coach['color'] ?>"
-                                                    style="border-left-color: <?= $coach['color'] ?>;">
-                                                    <?= htmlspecialchars($coach['name']) ?> (<?= ucfirst($coach['position']) ?>)
-
-                                                    <?php if ($is_admin): // Only show delete button for admins 
-                                                    ?>
-                                                        <span class="delete-coach"
-                                                            style="float: right; cursor: pointer; color: #a00; margin-left: 5px; font-weight: bold;"
-                                                            title="Remove Coach">&times;</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-
-                                </td>
-                            <?php endforeach; ?>
+                            <td>
+                                <div class="coach-draggable coach-helper" data-id="<?= $c['id'] ?>" data-role="helper" data-color="<?= $c['color_code'] ?>" style="border-color:<?= $c['color_code'] ?>">
+                                    <?= $c['name'] ?>
+                                </div>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        <?php else: ?>
-            <p>You do not have the required role to view the schedule.</p>
         <?php endif; ?>
+
+        <?php if ($can_view_tools): ?>
+            <div style="margin-top: 30px;">
+                <h4 style="color:#aaa; text-transform:uppercase; font-size:0.8em; letter-spacing:1px;">Management</h4>
+                <a href="users.php" class="sidebar-link"><i class="fas fa-users"></i> Manage Users</a>
+                <a href="private_classes.php" class="sidebar-link"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+
+                <?php if ($is_admin): ?>
+                    <a href="classes.php" class="sidebar-link"><i class="fas fa-calendar-alt"></i> Manage Classes</a>
+                    <a href="location_reports.php" class="sidebar-link"><i class="fas fa-file-invoice-dollar"></i> Payroll Report</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <div style="margin-top: 20px;">
+            <a href="reports.php" class="sidebar-link"><i class="fas fa-chart-line"></i> My Reports</a>
+            <a href="logout.php" class="sidebar-link" style="color:#e74c3c; border:none; margin-top:10px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+
+    <div id="calendar-container">
+        <div class="header-row">
+            <div>
+                <h2 style="margin:0; color:var(--secondary-dark)"><?= $current_location_name ?> Schedule - <?= $art_display ?></h2>
+                <div style="font-size:0.9em; color:#666; margin-top:5px;">Weekly View</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <a href="<?= $base_url ?>?week_start=<?= $prev_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn"><i class="fas fa-chevron-left"></i> Prev</a>
+                <span style="font-weight:bold; font-size:1.1em; color:var(--secondary-dark)"><?= date('M d', strtotime($start_of_week)) ?> - <?= date('M d', strtotime($end_of_week)) ?></span>
+                <a href="<?= $base_url ?>?week_start=<?= $next_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn">Next <i class="fas fa-chevron-right"></i></a>
+
+                <?php if ($is_admin): ?>
+
+                    <?php if ($is_locked): ?>
+                        <button id="lock-btn" onclick="toggleLock('unlock')" class="nav-btn btn-lock" title="Unlock Week"><i class="fas fa-lock"></i></button>
+                    <?php else: ?>
+                        <button id="lock-btn" onclick="toggleLock('lock')" class="nav-btn btn-unlock" title="Lock Week"><i class="fas fa-lock-open"></i></button>
+                    <?php endif; ?>
+
+                    <button id="clone-week-btn" class="nav-btn" style="background:#007bff; color:white; margin-left:15px;">
+                        <i class="fas fa-copy"></i> Clone Week
+                    </button>
+                <?php endif; ?>
+
+                <?php if ($can_view_tools): ?>
+                    <button id="download-btn" class="nav-btn" style="background:#28a745; color:white; margin-left:10px;">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <table id="custom-schedule" class="<?= $is_locked ? 'locked-mode' : '' ?>">
+            <thead>
+                <tr>
+                    <th class="time-col">Time</th>
+                    <?php foreach ($days_of_week as $d): ?>
+                        <th>
+                            <?= $d ?>
+                            <div style="font-weight:normal; font-size:0.85em; margin-top:4px; opacity:0.8">
+                                <?= date('M d', strtotime($start_of_week . " +" . array_search($d, $days_of_week) . " days")) ?>
+                            </div>
+                        </th>
+                    <?php endforeach; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($schedule_data as $row): ?>
+                    <tr>
+                        <td class="time-col">
+                            <div class="time-wrapper">
+                                <div class="time-text"><?= date('g:i A', strtotime($row['start_time'])) ?></div>
+                                <div class="class-text"><?= $row['class_title'] ?></div>
+
+                                <?php if ($is_admin): ?>
+                                    <div class="bulk-btn"
+                                        data-time="<?= $row['start_time'] ?>"
+                                        data-name="<?= htmlspecialchars($row['class_title']) ?>">
+                                        <i class="fas fa-layer-group"></i> [A] All Week
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <?php foreach ($days_of_week as $day): $cell = $row['data'][$day] ?? null; ?>
+                            <td>
+                                <?php if ($cell): ?>
+                                    <div class="slot"
+                                        id="slot-<?= $cell['template_id'] ?>-<?= $cell['date'] ?>"
+                                        data-tid="<?= $cell['template_id'] ?>"
+                                        data-date="<?= $cell['date'] ?>">
+
+                                        <?php foreach ($cell['coaches'] as $c): ?>
+                                            <?php $fontWeight = ($c['position'] === 'head') ? 'bold' : 'normal'; ?>
+
+                                            <div class="assignment"
+                                                data-cid="<?= $c['user_id'] ?>"
+                                                data-role="<?= $c['position'] ?>"
+                                                style="border-left:4px solid <?= $c['color_code'] ?>">
+                                                <span style="font-weight:<?= $fontWeight ?>"><?= $c['coach_name'] ?> (<?= ucfirst($c['position']) ?>)</span>
+                                                <?php if ($is_admin): ?><i class="fas fa-times del-btn"></i><?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
-
     <script>
-        $(document).ready(function() {
-            var isAdmin = <?php echo json_encode($is_admin); ?>;
-            var nextWeekStart = '<?php echo $next_week_start; ?>';
-            var currentWeekStart = $('#schedule-title').data('week-start');
+        $(function() {
+            const isAdmin = <?= json_encode($is_admin) ?>;
+            const weekStart = '<?= $start_of_week ?>';
+            const locId = '<?= $filter_location_id ?>';
+            const artFilter = '<?= $martial_art_filter ?>';
+            const nextWeekStart = '<?= $next_week_start ?>';
+            // NEW: Pass lock state to JS
+            const isLocked = <?= $is_locked ? 'true' : 'false' ?>;
 
-            // --- NEW: Selectors for the filters ---
-            const locationFilter = $('#location-filter');
-            const martialArtFilter = $('#martial-art-filter');
-
-            // Helper function for capitalizing position
-            function ucfirst(string) {
-                return string.charAt(0).toUpperCase() + string.slice(1);
-            }
-
-            // Helper function to build the URL parameters, including the new Martial Art filter
-            function buildParams() {
-                // Get Location filter value (if selected)
-                const locationParam = locationFilter.val() && locationFilter.val() !== '0' ? `&location=${locationFilter.val()}` : '';
-
-                // Get Martial Art filter value (if not 'all')
-                const martialArtParam = martialArtFilter.val() && martialArtFilter.val() !== 'all' ? `&martial_art=${martialArtFilter.val()}` : '';
-
-                return locationParam + martialArtParam;
-            }
-
-            // --- 7. NEW FILTER CHANGE LOGIC ---
-            // Combine both filter listeners into one simple call using buildParams()
-            locationFilter.on('change', function() {
-                window.location.href = 'dashboard.php?week_start=' + currentWeekStart + buildParams();
+            $('#loc-filter, #art-filter').change(function() {
+                window.location = `dashboard.php?week_start=${weekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
             });
 
-            martialArtFilter.on('change', function() {
-                window.location.href = 'dashboard.php?week_start=' + currentWeekStart + buildParams();
+            $('#download-btn').click(function() {
+                // 1. Temporarily remove the fade/gray effect
+                $('#custom-schedule').removeClass('locked-mode');
+
+                $('body').addClass('screenshot-mode');
+                window.scrollTo(0, 0);
+
+                setTimeout(function() {
+                    html2canvas(document.querySelector("#calendar-container"), {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: "#ffffff",
+                        windowWidth: document.documentElement.scrollWidth,
+                        windowHeight: document.documentElement.scrollHeight,
+                        scrollY: 0,
+                        scrollX: 0
+                    }).then(canvas => {
+                        let link = document.createElement('a');
+                        link.download = '<?= $current_location_name ?> Schedule - <?= $art_display ?> - <?= $start_of_week ?>.png';
+                        link.href = canvas.toDataURL("image/png");
+                        link.click();
+
+                        // 2. Restore everything back to normal
+                        $('body').removeClass('screenshot-mode');
+
+                        // If the page was locked, put the lock style back
+                        if (isLocked) {
+                            $('#custom-schedule').addClass('locked-mode');
+                        }
+                    });
+                }, 300);
             });
-            // --- END NEW FILTER LOGIC ---
 
-
-            // --- 1. INITIALIZE DRAG (Coaches from Sidebar) ---
-            function initDraggableCoaches() {
+            // ONLY INITIALIZE DRAG & DROP IF ADMIN AND NOT LOCKED
+            if (isAdmin && !isLocked) {
                 $('.coach-draggable').draggable({
-                    revert: 'invalid',
                     helper: 'clone',
-                    opacity: 0.7,
-                    zIndex: 1000
-                });
-            }
-
-            // --- 2. INITIALIZE REASSIGNMENT DRAG (Coaches in Slots) ---
-            function initCoachReassignment() {
-                // Make the assigned coaches draggable for re-assignment
-                $('.coach-assignment').draggable({
                     revert: 'invalid',
-                    helper: 'clone',
-                    opacity: 0.7,
-                    zIndex: 1000,
-                    cursor: 'move',
-                    start: function(event, ui) {
-                        $(this).data('original-slot', $(this).parent().attr('id'));
-                        $(this).css('opacity', 0);
+                    appendTo: 'body',
+                    cursorAt: {
+                        top: 15,
+                        left: 15
                     },
-                    stop: function(event, ui) {
-                        if ($(this).css('opacity') == 0) {
-                            $(this).css('opacity', 1);
-                        }
-                    }
-                });
-            }
-
-            // --- 3. INITIALIZE DROP (Class Slots) ---
-            function initDroppableSlots() {
-                $('.droppable-slot').droppable({
-                    accept: '.coach-draggable, .coach-assignment',
-                    hoverClass: 'ui-state-hover',
-                    drop: function(event, ui) {
-                        var droppedElement = ui.draggable;
-                        var isNewAssignment = droppedElement.hasClass('coach-draggable');
-                        var targetSlot = $(this);
-                        var targetEventId = targetSlot.attr('id').replace('slot-', '');
-                        var coachId = droppedElement.data('id') || droppedElement.data('coach-id');
-                        var position = droppedElement.data('role') || (droppedElement.hasClass('coach-head') ? 'head' : 'helper');
-                        var coachName = isNewAssignment ? droppedElement.text().trim() : droppedElement.text().trim().replace(/ \(Head\)|\(Helper\)/g, '').trim();
-                        var color = droppedElement.data('color') || droppedElement.css('border-left-color');
-                        var originalSlotId = droppedElement.data('original-slot');
-
-                        // Check for Duplicates in the Target Slot
-                        if (targetSlot.find('.coach-assignment[data-coach-id="' + coachId + '"]').length) {
-                            alert(coachName + ' is already assigned to this class.');
-                            if (!isNewAssignment) {
-                                droppedElement.css('opacity', 1);
-                            }
-                            return;
-                        }
-
-                        // --- Determine Action ---
-                        var actionType = isNewAssignment ? 'create_assignment' : 'reassign_assignment';
-
-                        // 1. Prepare AJAX data
-                        var ajaxData = {
-                            action: actionType,
-                            coach_id: coachId,
-                            event_id: targetEventId, // The new slot
-                            position: position
-                        };
-
-                        // Add old event ID if it's a reassign action
-                        if (actionType === 'reassign_assignment') {
-                            var oldEventId = originalSlotId.replace('slot-', '');
-                            ajaxData.old_event_id = oldEventId;
-                        }
-
-
-                        // 2. AJAX call to database
-                        $.ajax({
-                            url: 'api/update_assignment.php', // Assuming this file exists and handles the DB logic
-                            type: 'POST',
-                            data: ajaxData,
-                            success: function(response) {
-                                // 3. SUCCESS: Update the UI
-                                var newAssignmentHtml = '<div class="coach-assignment coach-' + position + '" data-coach-id="' + coachId + '" data-event-id="' + targetEventId + '" data-role="' + position + '" data-color="' + color + '" style="border-left-color: ' + color + ';">' +
-                                    coachName + ' (' + ucfirst(position) + ')' +
-                                    '<span class="delete-coach" style="float: right; cursor: pointer; color: #a00; margin-left: 5px; font-weight: bold;" title="Remove Coach">&times;</span>' +
-                                    '</div>';
-
-                                targetSlot.append(newAssignmentHtml); // Add to new slot
-
-                                if (actionType === 'reassign_assignment') {
-                                    droppedElement.remove();
-                                } else {
-                                    // If it was dragged from the sidebar, it's a new element, nothing to remove
-                                }
-
-                                // Re-initialize handlers for all dynamic elements
-                                initCoachReassignment();
-                                initDeleteHandler();
-                            },
-                            error: function(xhr) {
-                                alert('Database Error: Failed to reassign coach. ' + xhr.responseText);
-                                if (!isNewAssignment) {
-                                    droppedElement.css('opacity', 1);
-                                }
-                            }
+                    start: function(e, ui) {
+                        ui.helper.css({
+                            'width': '150px',
+                            'background': '#fff',
+                            'box-shadow': '0 5px 15px rgba(0,0,0,0.2)',
+                            'z-index': 999999,
+                            'padding': '10px',
+                            'border-radius': '4px',
+                            'text-align': 'center'
                         });
                     }
                 });
-            }
 
-            // --- 4. DELETE Handler (remains the same) ---
-            function initDeleteHandler() {
-                $(document).off('click', '.delete-coach');
+                function initSlotInteractions() {
+                    $('.slot').sortable({
+                        connectWith: '.slot',
+                        items: '.assignment',
+                        placeholder: 'ui-sortable-placeholder',
+                        cancel: '.del-btn',
+                        cursor: 'move',
+                        stop: function(event, ui) {
+                            const slot = ui.item.closest('.slot');
+                            const tid = slot.data('tid');
+                            const date = slot.data('date');
+                            let order = [];
+                            slot.find('.assignment').each(function() {
+                                order.push($(this).data('cid'));
+                            });
 
-                $(document).on('click', '.delete-coach', function(e) {
-                    e.stopPropagation();
-
-                    var deleteButton = $(this);
-                    var assignmentDiv = deleteButton.parent('.coach-assignment');
-                    var coachId = assignmentDiv.data('coach-id');
-                    var eventId = assignmentDiv.data('event-id');
-                    var coachInfo = assignmentDiv.text().trim().replace(/×$/, '').trim();
-
-                    if (!confirm('Are you sure you want to remove ' + coachInfo + ' from this class?')) {
-                        return;
-                    }
-
-                    $.ajax({
-                        url: 'api/update_assignment.php',
-                        type: 'POST',
-                        data: {
-                            action: 'delete_assignment',
-                            coach_id: coachId,
-                            event_id: eventId
-                        },
-                        success: function(response) {
-                            assignmentDiv.fadeOut(300, function() {
-                                $(this).remove();
+                            $.post('api/update_assignment.php', {
+                                action: 'update_order',
+                                template_id: tid,
+                                class_date: date,
+                                order: order
                             });
                         },
-                        error: function(xhr) {
-                            alert('Database Error: Failed to delete assignment. ' + xhr.responseText);
+                        receive: function(event, ui) {
+                            const slot = $(this);
+                            const tid = slot.data('tid');
+                            const date = slot.data('date');
+                            const cid = ui.item.data('cid');
+                            const role = ui.item.data('role');
+
+                            $.post('api/update_assignment.php', {
+                                action: 'reassign_assignment',
+                                coach_id: cid,
+                                template_id: tid,
+                                class_date: date,
+                                position: role,
+                                old_template_id: ui.sender.data('tid'),
+                                old_class_date: ui.sender.data('date')
+                            });
+                        }
+                    }).droppable({
+                        accept: '.coach-draggable',
+                        hoverClass: 'ui-state-hover',
+                        drop: function(e, ui) {
+                            if (!ui.draggable.hasClass('coach-draggable')) return;
+                            const item = ui.draggable;
+                            const slot = $(this);
+                            const cid = item.data('id');
+                            const role = item.data('role');
+                            const tid = slot.data('tid');
+                            const date = slot.data('date');
+
+                            if (slot.find(`[data-cid="${cid}"]`).length) return;
+
+                            let data = {
+                                action: 'create_assignment',
+                                coach_id: cid,
+                                template_id: tid,
+                                class_date: date,
+                                position: role
+                            };
+
+                            $.post('api/update_assignment.php', data, function(res) {
+                                if (res.success) {
+                                    const color = item.data('color') || item.css('border-color');
+                                    let name = item.text().trim().split('(')[0].trim();
+                                    const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+                                    const fontWeight = (role === 'head') ? 'bold' : 'normal';
+
+                                    const html = `
+                                <div class="assignment" data-cid="${cid}" data-role="${role}" style="border-left:4px solid ${color}">
+                                    <span style="font-weight:${fontWeight}">${name} (${roleLabel})</span>
+                                    <i class="fas fa-times del-btn"></i>
+                                </div>`;
+                                    slot.append(html);
+                                    $('.slot').sortable('refresh');
+                                }
+                            }, 'json');
                         }
                     });
+                }
+                initSlotInteractions();
+
+                $('.bulk-btn').droppable({
+                    accept: '.coach-draggable',
+                    hoverClass: 'ui-state-hover',
+                    tolerance: 'pointer',
+                    drop: function(e, ui) {
+                        const item = ui.draggable;
+                        const btn = $(this);
+                        const cid = item.data('id');
+                        const role = item.data('role');
+                        const name = item.text().trim();
+                        const time = btn.data('time');
+                        const className = btn.data('name');
+
+                        if (confirm(`Assign ${name} to ALL "${className}" classes at this time for the whole week?`)) {
+                            $.post('api/update_assignment.php', {
+                                action: 'bulk_assign_by_time',
+                                coach_id: cid,
+                                position: role,
+                                week_start: weekStart,
+                                class_time: time,
+                                class_name: className,
+                                location_id: locId,
+                                martial_art: artFilter
+                            }, function(res) {
+                                if (res.success) location.reload();
+                                else alert(res.message || "Failed");
+                            }, 'json');
+                        }
+                    }
                 });
-            }
 
-            if (isAdmin) {
-                // --- Initial Load for Admin ---
-                initDraggableCoaches();
-                initCoachReassignment();
-                initDroppableSlots();
-                initDeleteHandler();
+                $(document).on('click', '.del-btn', function(e) {
+                    e.stopPropagation();
+                    if (!confirm('Remove coach?')) return;
+                    const el = $(this).closest('.assignment');
+                    const slot = el.closest('.slot');
+                    $.post('api/update_assignment.php', {
+                        action: 'delete_assignment',
+                        coach_id: el.data('cid'),
+                        template_id: slot.data('tid'),
+                        class_date: slot.data('date')
+                    }, function() {
+                        el.remove();
+                    });
+                });
 
-                // --- CLONE WEEK LOGIC (Admin only) ---
-                document.getElementById('clone-week-btn').addEventListener('click', async () => {
-
-                    const sourceDate = $('#schedule-title').data('week-start');
-
-                    if (!sourceDate) {
-                        alert("Could not determine the start date of the current week.");
-                        return;
-                    }
-
-                    // Confirmation is CRUCIAL to prevent accidental cloning
-                    if (!confirm(`Are you sure you want to clone the schedule from the week starting ${sourceDate} to the following week?`)) {
-                        return;
-                    }
-
+                $('#clone-week-btn').click(async () => {
+                    if (!confirm(`Clone schedule from ${weekStart} to next week?`)) return;
                     try {
                         const response = await fetch('api/clone_classes.php', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
-                                sourceWeekStart: sourceDate
+                                sourceWeekStart: weekStart
                             })
                         });
-
                         const result = await response.json();
-
                         if (response.ok) {
-                            console.log('Clone Result:', result);
-
-                            let alertMessage = `Success! Cloned ${result.clonedCount} classes to the next week.\n\n`;
-
-                            if (result.debug && result.debug.length > 0) {
-                                alertMessage += "--- DEBUG LOG ---\n" + result.debug.join('\n');
-                            } else if (result.message) {
-                                alertMessage += "Message: " + result.message;
-                            }
-
-
-                            alert(alertMessage);
-
-                            // Navigate to the next week, preserving ALL current filters (location and martial art)
-                            // *** FIX 8: Use buildParams() and nextWeekStart for navigation after cloning ***
-                            if (result.clonedCount > 0) {
-                                window.location.href = 'dashboard.php?week_start=' + nextWeekStart + buildParams();
-                            }
-
-                        } else {
-                            let errorMessage = `Error cloning schedule: ${result.message || 'Unknown error'}\n\n`;
-                            if (result.debug && result.debug.length > 0) {
-                                errorMessage += "--- DEBUG LOG ---\n" + result.debug.join('\n');
-                            }
-                            alert(errorMessage);
-                        }
-                    } catch (error) {
-                        console.error('Network error during cloning:', error);
-                        alert('An unexpected error occurred. Check console.');
+                            alert(`Cloned ${result.clonedCount} classes.`);
+                            if (result.clonedCount > 0) window.location = `dashboard.php?week_start=${nextWeekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
+                        } else alert('Error: ' + result.message);
+                    } catch (e) {
+                        alert('Clone failed.');
                     }
                 });
             }
         });
+
+        // NEW: Lock Toggle Function
+        function toggleLock(action) {
+            const locId = '<?= $filter_location_id ?>';
+            const type = '<?= $martial_art_filter ?>';
+            const weekStart = '<?= $start_of_week ?>';
+
+            if (!confirm(`Are you sure you want to ${action} this week's schedule?`)) return;
+
+            fetch('toggle_lock.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        location_id: locId,
+                        type: type,
+                        week_start: weekStart,
+                        action: action
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert("Error: " + (data.error || "Unknown"));
+                    }
+                });
+        }
     </script>
 </body>
 

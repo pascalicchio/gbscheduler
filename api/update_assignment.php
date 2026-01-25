@@ -1,138 +1,97 @@
 <?php
-// api/update_assignment.php - FINALIZED WITH REASSIGNMENT LOGIC
-
-require '../db.php';
 session_start();
+require '../db.php';
+header('Content-Type: application/json');
 
-// Security check: Only administrators should be able to modify assignments
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    http_response_code(403);
-    die("Access Denied.");
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    exit;
 }
 
-// Ensure required variables for any action are present
-if (!isset($_POST['action']) || !isset($_POST['coach_id']) || !isset($_POST['event_id'])) {
-    http_response_code(400); // Bad Request
-    die("Missing required parameters (action, coach_id, or event_id).");
-}
+$action = $_POST['action'] ?? '';
+$cid = $_POST['coach_id'] ?? '';
+$pos = $_POST['position'] ?? 'head';
 
-$action = $_POST['action'];
-$coach_id = intval($_POST['coach_id']);
-$event_id = intval($_POST['event_id']); // This is the TARGET event ID
+try {
+    if ($action === 'create_assignment' || $action === 'reassign_assignment') {
+        $tid = $_POST['template_id'];
+        $date = $_POST['class_date'];
 
-if ($coach_id <= 0 || $event_id <= 0) {
-    http_response_code(400);
-    die("Invalid coach ID or event ID received.");
-}
-
-
-// ===================================
-// 1. CREATE ASSIGNMENT LOGIC (DRAG/DROP FROM SIDEBAR)
-// ===================================
-if ($action == 'create_assignment') {
-    $position = $_POST['position'] ?? null;
-
-    // Validate position input
-    if ($position !== 'head' && $position !== 'helper') {
-        http_response_code(400);
-        die("Invalid position submitted.");
-    }
-
-    $pdo->beginTransaction();
-
-    try {
-        // 1. Check for Duplicates
-        $stmt_check = $pdo->prepare("SELECT id FROM event_assignments WHERE event_id = ? AND user_id = ?");
-        $stmt_check->execute([$event_id, $coach_id]);
-        if ($stmt_check->rowCount() > 0) {
-            $pdo->rollBack();
-            http_response_code(409);
-            die("Error: Coach already assigned to this class.");
+        // If reassign, delete old first
+        if ($action === 'reassign_assignment') {
+            $stmt = $pdo->prepare("DELETE FROM event_assignments WHERE user_id=? AND template_id=? AND class_date=?");
+            $stmt->execute([$cid, $_POST['old_template_id'], $_POST['old_class_date']]);
         }
 
-        // 2. Insert Assignment with the selected position
-        $sql = "INSERT INTO event_assignments (event_id, user_id, position) VALUES (?, ?, ?)";
-        $stmt_insert = $pdo->prepare($sql);
-        $stmt_insert->execute([$event_id, $coach_id, $position]);
+        // Get max sort order to append to bottom
+        $stmt = $pdo->prepare("SELECT MAX(sort_order) FROM event_assignments WHERE template_id=? AND class_date=?");
+        $stmt->execute([$tid, $date]);
+        $maxSort = $stmt->fetchColumn() ?: 0;
+        $newSort = $maxSort + 1;
 
+        $stmt = $pdo->prepare("INSERT INTO event_assignments (template_id, class_date, user_id, position, sort_order) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE user_id=?, position=?, sort_order=?");
+        $stmt->execute([$tid, $date, $cid, $pos, $newSort, $cid, $pos, $newSort]);
+        echo json_encode(['success' => true]);
+    } elseif ($action === 'delete_assignment') {
+        $stmt = $pdo->prepare("DELETE FROM event_assignments WHERE user_id=? AND template_id=? AND class_date=?");
+        $stmt->execute([$cid, $_POST['template_id'], $_POST['class_date']]);
+        echo json_encode(['success' => true]);
+    } elseif ($action === 'bulk_assign_by_time') {
+        $week_start = $_POST['week_start'];
+        $time = $_POST['class_time'];
+        $name = $_POST['class_name'];
+        $loc = $_POST['location_id'];
+        $art = $_POST['martial_art'];
+
+        $sql = "SELECT id, day_of_week FROM class_templates WHERE start_time = ? AND class_name = ? AND location_id = ?";
+        $params = [$time, $name, $loc];
+
+        if ($art !== 'all') {
+            $sql .= " AND martial_art = ?";
+            $params[] = $art;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($templates)) {
+            echo json_encode(['success' => false, 'message' => 'No matching classes found.']);
+            exit;
+        }
+
+        $pdo->beginTransaction();
+        $days_map = ['Monday' => 0, 'Tuesday' => 1, 'Wednesday' => 2, 'Thursday' => 3, 'Friday' => 4, 'Saturday' => 5, 'Sunday' => 6];
+        $start_ts = strtotime($week_start);
+        $ins = $pdo->prepare("INSERT INTO event_assignments (template_id, class_date, user_id, position, sort_order) VALUES (?,?,?,?,100) ON DUPLICATE KEY UPDATE user_id=?, position=?");
+
+        foreach ($templates as $t) {
+            $dname = $t['day_of_week'];
+            if (!isset($days_map[$dname])) continue;
+            $offset = $days_map[$dname];
+            $date = date('Y-m-d', strtotime("+$offset days", $start_ts));
+            $ins->execute([$t['id'], $date, $cid, $pos, $cid, $pos]);
+        }
         $pdo->commit();
-
-        echo "Coach assigned as " . $position . " to Event ID: " . $event_id;
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        http_response_code(500);
-        die("Database INSERT failed. Error: " . $e->getMessage());
+        echo json_encode(['success' => true]);
     }
-}
-// ===================================
-// 2. DELETE ASSIGNMENT LOGIC (CLICK X)
-// ===================================
-elseif ($action === 'delete_assignment') {
 
-    try {
-        // Delete the record matching both user_id (coach) and event_id (class slot)
-        $stmt = $pdo->prepare("DELETE FROM event_assignments WHERE user_id = :coach_id AND event_id = :event_id LIMIT 1");
-        $stmt->execute([
-            'coach_id' => $coach_id,
-            'event_id' => $event_id
-        ]);
+    // *** NEW: UPDATE ORDER ***
+    elseif ($action === 'update_order') {
+        $tid = $_POST['template_id'];
+        $date = $_POST['class_date'];
+        $order = $_POST['order'] ?? [];
 
-        if ($stmt->rowCount() > 0) {
-            echo "Assignment deleted successfully.";
-        } else {
-            http_response_code(404);
-            echo "No matching assignment found to delete.";
+        if (is_array($order) && count($order) > 0) {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("UPDATE event_assignments SET sort_order = ? WHERE user_id = ? AND template_id = ? AND class_date = ?");
+            foreach ($order as $index => $userId) {
+                $stmt->execute([$index + 1, $userId, $tid, $date]); // +1 so order starts at 1
+            }
+            $pdo->commit();
         }
-    } catch (PDOException $e) {
-        http_response_code(500);
-        die("Database DELETE failed. Error: " . $e->getMessage());
+        echo json_encode(['success' => true]);
     }
-}
-// ===================================
-// 3. REASSIGNMENT LOGIC (DRAG/DROP BETWEEN SLOTS)
-// ===================================
-elseif ($action === 'reassign_assignment') {
-    $old_event_id = intval($_POST['old_event_id'] ?? 0);
-    $position = $_POST['position'] ?? null;
-
-    if ($old_event_id <= 0 || !$position) {
-        http_response_code(400);
-        die("Missing required parameters for re-assignment (old_event_id or position).");
-    }
-
-    $pdo->beginTransaction();
-
-    try {
-        // A. DELETE the old assignment
-        $stmt_delete = $pdo->prepare("DELETE FROM event_assignments WHERE user_id = :coach_id AND event_id = :old_event_id LIMIT 1");
-        $stmt_delete->execute([
-            'coach_id' => $coach_id,
-            'old_event_id' => $old_event_id
-        ]);
-
-        if ($stmt_delete->rowCount() === 0) {
-            $pdo->rollBack();
-            http_response_code(404);
-            die("Error: Original assignment not found to delete.");
-        }
-
-        // B. INSERT the new assignment
-        $stmt_insert = $pdo->prepare("INSERT INTO event_assignments (event_id, user_id, position) VALUES (?, ?, ?)");
-        $stmt_insert->execute([$event_id, $coach_id, $position]);
-
-        $pdo->commit();
-
-        echo "Coach ID {$coach_id} successfully moved from Event ID {$old_event_id} to Event ID {$event_id}.";
-    } catch (PDOException $e) {
-        $pdo->rollBack();
-        http_response_code(500);
-        die("Database REASSIGNMENT failed. Error: " . $e->getMessage());
-    }
-}
-// ===================================
-// 4. INVALID ACTION
-// ===================================
-else {
-    http_response_code(400);
-    die("Invalid action specified.");
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
