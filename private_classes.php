@@ -36,6 +36,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-check-circle'></i> Recorded! Payout set to $$payout</div>";
             }
         }
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'edit') {
+        $edit_id = $_POST['edit_id'];
+        $coach_id = $_POST['coach_id'];
+        $location_id = $_POST['location_id'];
+        $student = $_POST['student_name'];
+        $date = $_POST['date'];
+        $time = $_POST['time'];
+        $payout = $_POST['payout'];
+
+        $stmt = $pdo->prepare("UPDATE private_classes SET user_id=?, location_id=?, student_name=?, class_date=?, class_time=?, payout=? WHERE id=?");
+        if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $edit_id])) {
+            $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-check-circle'></i> Entry updated successfully!</div>";
+        }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'delete') {
         $del_id = $_POST['delete_id'];
         $pdo->prepare("DELETE FROM private_classes WHERE id = ?")->execute([$del_id]);
@@ -232,10 +245,11 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchA
     <div class="main-layout">
 
         <div class="form-card">
-            <h3>Record Class</h3>
+            <h3 id="form-title">Record Class</h3>
             <?= $msg ?>
-            <form method="POST">
-                <input type="hidden" name="action" value="add">
+            <form method="POST" id="class-form">
+                <input type="hidden" name="action" id="form-action" value="add">
+                <input type="hidden" name="edit_id" id="edit-id" value="">
 
                 <label>Coach</label>
                 <select name="coach_id" id="coach_id" required onchange="updatePayout()">
@@ -266,7 +280,8 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchA
                 <input type="number" step="0.01" name="payout" id="payout" required placeholder="0.00" style="font-weight:bold; color:#28a745; border-color:#28a745;">
                 <small style="display:block; margin-top:-10px; margin-bottom:15px; color:#888;">Auto-filled based on settings. Edit for cleaning/seminars.</small>
 
-                <button type="submit" class="btn-save">Save Entry</button>
+                <button type="submit" class="btn-save" id="submit-btn">Save Entry</button>
+                <button type="button" id="cancel-btn" onclick="cancelEdit()" style="display:none; width:100%; padding:12px; margin-top:10px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Cancel Edit</button>
             </form>
         </div>
 
@@ -312,6 +327,7 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchA
                             <td><?= htmlspecialchars($r['student_name']) ?></td>
                             <td style="font-weight:bold; color:#28a745;">$<?= number_format($r['payout'], 2) ?></td>
                             <td>
+                                <button type="button" onclick='editEntry(<?= json_encode($r) ?>)' style="background:none; border:none; color:#007bff; cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
                                 <form method="POST" onsubmit="return confirm('Delete?');" style="display:inline;">
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="delete_id" value="<?= $r['id'] ?>">
@@ -342,6 +358,43 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchA
                     payoutBox.value = '0.00';
                 }
             }
+        }
+
+        function editEntry(data) {
+            // Populate form with existing data
+            document.getElementById('form-action').value = 'edit';
+            document.getElementById('edit-id').value = data.id;
+            document.getElementById('coach_id').value = data.user_id;
+            document.getElementById('location_id').value = data.location_id;
+            document.querySelector('input[name="student_name"]').value = data.student_name;
+            document.querySelector('input[name="date"]').value = data.class_date;
+            document.querySelector('input[name="time"]').value = data.class_time || '';
+            document.getElementById('payout').value = data.payout;
+
+            // Update UI
+            document.getElementById('form-title').textContent = 'Edit Entry';
+            document.getElementById('submit-btn').textContent = 'Update Entry';
+            document.getElementById('submit-btn').style.background = '#28a745';
+            document.getElementById('cancel-btn').style.display = 'block';
+
+            // Scroll to form
+            document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            // Reset form
+            document.getElementById('class-form').reset();
+            document.getElementById('form-action').value = 'add';
+            document.getElementById('edit-id').value = '';
+
+            // Reset UI
+            document.getElementById('form-title').textContent = 'Record Class';
+            document.getElementById('submit-btn').textContent = 'Save Entry';
+            document.getElementById('submit-btn').style.background = '#007bff';
+            document.getElementById('cancel-btn').style.display = 'none';
+
+            // Reset date to today
+            document.querySelector('input[name="date"]').value = '<?= date('Y-m-d') ?>';
         }
     </script>
 </body>
