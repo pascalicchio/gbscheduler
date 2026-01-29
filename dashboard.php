@@ -274,37 +274,42 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             margin-bottom: 20px;
         }
 
-        /* Payroll Summary Box */
+        /* Payroll Summary Box - Compact Design */
         .payroll-box {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            border-radius: 10px;
-            padding: 15px;
+            background: #2c3e50;
+            border-radius: 6px;
+            padding: 12px 15px;
             margin-bottom: 20px;
-            color: white;
-            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .payroll-header {
+        .payroll-label {
             font-size: 0.8em;
+            color: rgba(255,255,255,0.7);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.9;
-            margin-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+
+        .payroll-label i {
+            margin-right: 5px;
+            color: #28a745;
+        }
+
+        .payroll-value {
+            text-align: right;
         }
 
         .payroll-amount {
-            font-size: 2em;
+            font-size: 1.3em;
             font-weight: bold;
-            margin-bottom: 8px;
+            color: #2ecc71;
         }
 
-        .payroll-details {
-            font-size: 0.85em;
-            opacity: 0.9;
-        }
-
-        .payroll-details i {
-            margin-right: 5px;
+        .payroll-count {
+            font-size: 0.75em;
+            color: rgba(255,255,255,0.5);
         }
 
         .filter-box label {
@@ -711,14 +716,12 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         <?php if ($is_admin): ?>
             <!-- Payroll Summary Box -->
             <div id="payroll-summary" class="payroll-box">
-                <div class="payroll-header">
-                    <i class="fas fa-calculator"></i> Week Payroll
+                <div class="payroll-label">
+                    <i class="fas fa-dollar-sign"></i> Payroll Preview
                 </div>
-                <div class="payroll-amount">
-                    $<span id="payroll-total">0.00</span>
-                </div>
-                <div class="payroll-details">
-                    <span><i class="fas fa-user-tie"></i> <span id="payroll-assignments">0</span> assignments</span>
+                <div class="payroll-value">
+                    <div class="payroll-amount">$<span id="payroll-total">0.00</span></div>
+                    <div class="payroll-count"><span id="payroll-assignments">0</span> assignments</div>
                 </div>
             </div>
 
@@ -889,21 +892,25 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             const isLocked = <?= $is_locked ? 'true' : 'false' ?>;
 
             // Coach rates for payroll calculation
-            const coachRates = <?= json_encode($coach_rates) ?>;
+            const coachRates = <?= !empty($coach_rates) ? json_encode($coach_rates) : '{}' ?>;
 
             // Calculate hours between two time strings (HH:MM:SS)
             function getHours(startTime, endTime) {
-                const [sh, sm] = startTime.split(':').map(Number);
-                const [eh, em] = endTime.split(':').map(Number);
-                let hours = (eh + em/60) - (sh + sm/60);
-                // Handle overnight or negative (shouldn't happen but safety)
-                if (hours < 0) hours += 24;
-                // Minimum 1 hour
-                return Math.max(hours, 1);
+                try {
+                    const [sh, sm] = String(startTime).split(':').map(Number);
+                    const [eh, em] = String(endTime).split(':').map(Number);
+                    let hours = (eh + em/60) - (sh + sm/60);
+                    if (hours < 0) hours += 24;
+                    return Math.max(hours, 1);
+                } catch(e) {
+                    return 1;
+                }
             }
 
             // Calculate total payroll from all assignments on screen
             function calculatePayroll() {
+                if (!isAdmin) return;
+
                 let total = 0;
                 let assignmentCount = 0;
 
@@ -921,22 +928,20 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                         const coachId = assignment.data('cid');
                         const role = assignment.data('role');
 
-                        if (coachRates[coachId]) {
+                        if (coachRates && coachRates[coachId]) {
                             const rate = coachRates[coachId][role] || 0;
                             total += hours * rate;
-                            assignmentCount++;
                         }
+                        assignmentCount++;
                     });
                 });
 
-                $('#payroll-total').text(total.toFixed(2));
+                $('#payroll-total').text(total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#payroll-assignments').text(assignmentCount);
             }
 
             // Calculate on page load
-            if (isAdmin) {
-                calculatePayroll();
-            }
+            calculatePayroll();
 
             $('#loc-filter, #art-filter').change(function() {
                 window.location = `dashboard.php?week_start=${weekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
@@ -1061,7 +1066,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                             };
 
                             $.post('api/update_assignment.php', data, function(res) {
-                                if (res.success) {
+                                if (res && res.success) {
                                     const color = item.data('color') || item.css('border-color');
                                     let name = item.text().trim().split('(')[0].trim();
                                     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
@@ -1074,7 +1079,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                                 </div>`;
                                     slot.append(html);
                                     $('.slot').sortable('refresh');
-                                    calculatePayroll(); // Update payroll
+                                    calculatePayroll();
                                 }
                             }, 'json');
                         }
