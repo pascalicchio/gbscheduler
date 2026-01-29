@@ -1,23 +1,19 @@
 <?php
-// private_classes.php - MANAGER TOOL (Restored Filters + Payout)
-session_start();
-require 'db.php';
+// private_classes.php - MANAGER TOOL
+require_once 'includes/config.php';
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['admin', 'manager'])) {
-    header("Location: dashboard.php");
-    exit();
-}
+// Require admin or manager access
+requireAuth(['admin', 'manager']);
 
-// 1. Fetch Rates for JS (Auto-fill Logic)
+// Fetch Rates for JS (Auto-fill Logic)
 $rates_raw = $pdo->query("SELECT user_id, location_id, rate, discount_percent FROM private_rates")->fetchAll(PDO::FETCH_ASSOC);
 $rates_map = [];
 foreach ($rates_raw as $r) {
-    // Calculate Net Pay (Rate - Fee)
     $net = $r['rate'] - ($r['rate'] * ($r['discount_percent'] / 100));
     $rates_map[$r['user_id'] . '_' . $r['location_id']] = number_format($net, 2, '.', '');
 }
 
-// 2. HANDLE ACTIONS
+// HANDLE ACTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'add') {
         $coach_id = $_POST['coach_id'];
@@ -32,8 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$check->fetch()) {
             $stmt = $pdo->prepare("INSERT INTO private_classes (user_id, location_id, student_name, class_date, class_time, payout, created_by) VALUES (?,?,?,?,?,?,?)");
-            if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $_SESSION['user_id']])) {
-                $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-check-circle'></i> Recorded! Payout set to $$payout</div>";
+            if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, getUserId()])) {
+                setFlash("Recorded! Payout set to $$payout", 'success');
             }
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'edit') {
@@ -47,31 +43,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("UPDATE private_classes SET user_id=?, location_id=?, student_name=?, class_date=?, class_time=?, payout=? WHERE id=?");
         if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $edit_id])) {
-            $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-check-circle'></i> Entry updated successfully!</div>";
+            setFlash("Entry updated successfully!", 'success');
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'delete') {
         $del_id = $_POST['delete_id'];
         $pdo->prepare("DELETE FROM private_classes WHERE id = ?")->execute([$del_id]);
-        $_SESSION['flash_msg'] = "<div class='alert error'><i class='fas fa-trash'></i> Entry deleted.</div>";
+        setFlash("Entry deleted.", 'error');
     }
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit();
 }
 
-$msg = $_SESSION['flash_msg'] ?? '';
-unset($_SESSION['flash_msg']);
+$msg = getFlash();
 
-// 3. FILTERS
+// FILTERS
 $start_date = $_GET['start_date'] ?? date('Y-m-01');
 $end_date   = $_GET['end_date'] ?? date('Y-m-t');
 $filter_loc = $_GET['location_id'] ?? '';
 $filter_coach = $_GET['coach_id'] ?? '';
 
 $query = "
-    SELECT pc.*, u.name as coach_name, l.name as loc_name 
-    FROM private_classes pc 
-    JOIN users u ON pc.user_id = u.id 
-    JOIN locations l ON pc.location_id = l.id 
+    SELECT pc.*, u.name as coach_name, l.name as loc_name
+    FROM private_classes pc
+    JOIN users u ON pc.user_id = u.id
+    JOIN locations l ON pc.location_id = l.id
     WHERE pc.class_date BETWEEN :start AND :end
 ";
 $params = ['start' => $start_date, 'end' => $end_date];
@@ -92,311 +87,239 @@ $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $coaches = $pdo->query("SELECT id, name FROM users WHERE role != 'manager' ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+
+// Page setup
+$pageTitle = 'Private Classes | GB Scheduler';
+$extraCss = <<<CSS
+    body { padding: 20px; }
+
+    .form-card { flex: 0 0 320px; }
+    .form-card.sticky { position: sticky; top: 20px; }
+
+    .data-card {
+        flex: 1;
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+    }
+
+    .payout-input {
+        font-weight: bold;
+        color: var(--success);
+        border-color: var(--success) !important;
+    }
+CSS;
+
+require_once 'includes/header.php';
 ?>
 
-<!DOCTYPE html>
-<html>
+<div class="top-bar">
+    <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <h2 class="page-title"><i class="fas fa-money-bill-wave"></i> Private Classes Manager</h2>
+</div>
 
-<head>
-    <title>Private Classes Manager</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #007bff;
-            --secondary: #2c3e50;
-            --bg: #f4f6f9;
-        }
+<div class="main-layout">
+    <div class="form-card sticky">
+        <h3 id="form-title" class="mt-0">Record Class</h3>
+        <?= $msg ?>
+        <form method="POST" id="class-form">
+            <input type="hidden" name="action" id="form-action" value="add">
+            <input type="hidden" name="edit_id" id="edit-id" value="">
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--bg);
-            padding: 20px;
-            color: #333;
-        }
+            <label>Coach</label>
+            <select name="coach_id" id="coach_id" required onchange="updatePayout()">
+                <option value="">Select Coach...</option>
+                <?php foreach ($coaches as $c): ?>
+                    <option value="<?= $c['id'] ?>"><?= e($c['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+            <label>Location</label>
+            <select name="location_id" id="location_id" required onchange="updatePayout()">
+                <option value="">Select Location...</option>
+                <?php foreach ($locations as $l): ?>
+                    <option value="<?= $l['id'] ?>"><?= e($l['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-        .nav-link {
-            text-decoration: none;
-            color: var(--secondary);
-            font-weight: 600;
-            background: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
+            <label>Student / Activity Name</label>
+            <input type="text" name="student_name" required placeholder="e.g. John Doe OR Cleaning">
 
-        .main-layout {
-            display: flex;
-            gap: 25px;
-            align-items: flex-start;
-        }
+            <label>Date</label>
+            <input type="date" name="date" value="<?= date('Y-m-d') ?>" required>
 
-        .form-card {
-            flex: 0 0 320px;
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 20px;
-        }
+            <label>Time (Optional)</label>
+            <input type="time" name="time">
 
-        .data-card {
-            flex: 1;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
+            <label class="text-success">Payout Amount ($)</label>
+            <input type="number" step="0.01" name="payout" id="payout" required placeholder="0.00" class="payout-input">
+            <p class="form-text">Auto-filled based on settings. Edit for cleaning/seminars.</p>
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: #555;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-
-        button.btn-save {
-            width: 100%;
-            padding: 12px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .alert {
-            padding: 12px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95em;
-        }
-
-        th {
-            background: #f8f9fa;
-            color: #666;
-            font-weight: 600;
-            padding: 15px 20px;
-            text-align: left;
-            border-bottom: 2px solid #eee;
-        }
-
-        td {
-            padding: 12px 20px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .filter-bar {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e1e4e8;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .filter-bar select,
-        .filter-bar input {
-            width: auto;
-            flex: 1;
-            margin-bottom: 0;
-            min-width: 150px;
-        }
-    </style>
-</head>
-
-<body>
-
-    <div class="top-bar">
-        <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-        <h2 style="margin:0; color:#2c3e50;">Private Classes Manager</h2>
+            <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Save Entry</button>
+            <button type="button" id="cancel-btn" onclick="cancelEdit()" class="btn btn-secondary btn-block mt-1 hidden">Cancel Edit</button>
+        </form>
     </div>
 
-    <div class="main-layout">
+    <div class="data-card">
+        <form method="GET" class="filter-bar">
+            <input type="date" name="start_date" value="<?= $start_date ?>">
+            <input type="date" name="end_date" value="<?= $end_date ?>">
 
-        <div class="form-card">
-            <h3 id="form-title">Record Class</h3>
-            <?= $msg ?>
-            <form method="POST" id="class-form">
-                <input type="hidden" name="action" id="form-action" value="add">
-                <input type="hidden" name="edit_id" id="edit-id" value="">
+            <select name="location_id">
+                <option value="">All Locations</option>
+                <?php foreach ($locations as $l): ?>
+                    <option value="<?= $l['id'] ?>" <?= $filter_loc == $l['id'] ? 'selected' : '' ?>><?= e($l['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-                <label>Coach</label>
-                <select name="coach_id" id="coach_id" required onchange="updatePayout()">
-                    <option value="">Select Coach...</option>
-                    <?php foreach ($coaches as $c): ?>
-                        <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
-                    <?php endforeach; ?>
-                </select>
+            <select name="coach_id">
+                <option value="">All Coaches</option>
+                <?php foreach ($coaches as $c): ?>
+                    <option value="<?= $c['id'] ?>" <?= $filter_coach == $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-                <label>Location</label>
-                <select name="location_id" id="location_id" required onchange="updatePayout()">
-                    <option value="">Select Location...</option>
-                    <?php foreach ($locations as $l): ?>
-                        <option value="<?= $l['id'] ?>"><?= $l['name'] ?></option>
-                    <?php endforeach; ?>
-                </select>
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        </form>
 
-                <label>Student / Activity Name</label>
-                <input type="text" name="student_name" required placeholder="e.g. John Doe OR Cleaning">
-
-                <label>Date</label>
-                <input type="date" name="date" value="<?= date('Y-m-d') ?>" required>
-
-                <label>Time (Optional)</label>
-                <input type="time" name="time">
-
-                <label style="color:#28a745">Payout Amount ($)</label>
-                <input type="number" step="0.01" name="payout" id="payout" required placeholder="0.00" style="font-weight:bold; color:#28a745; border-color:#28a745;">
-                <small style="display:block; margin-top:-10px; margin-bottom:15px; color:#888;">Auto-filled based on settings. Edit for cleaning/seminars.</small>
-
-                <button type="submit" class="btn-save" id="submit-btn">Save Entry</button>
-                <button type="button" id="cancel-btn" onclick="cancelEdit()" style="display:none; width:100%; padding:12px; margin-top:10px; background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;">Cancel Edit</button>
-            </form>
-        </div>
-
-        <div class="data-card">
-            <form method="GET" class="filter-bar">
-                <input type="date" name="start_date" value="<?= $start_date ?>">
-                <input type="date" name="end_date" value="<?= $end_date ?>">
-
-                <select name="location_id">
-                    <option value="">All Locations</option>
-                    <?php foreach ($locations as $l): ?>
-                        <option value="<?= $l['id'] ?>" <?= $filter_loc == $l['id'] ? 'selected' : '' ?>><?= $l['name'] ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <select name="coach_id">
-                    <option value="">All Coaches</option>
-                    <?php foreach ($coaches as $c): ?>
-                        <option value="<?= $c['id'] ?>" <?= $filter_coach == $c['id'] ? 'selected' : '' ?>><?= $c['name'] ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <button type="submit" class="btn-save" style="width:auto; padding: 8px 15px; flex:0 0 auto;">Filter</button>
-            </form>
-
-            <table>
-                <thead>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Coach</th>
+                    <th>Location</th>
+                    <th>Activity</th>
+                    <th>Payout</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($history as $r): ?>
                     <tr>
-                        <th>Date</th>
-                        <th>Coach</th>
-                        <th>Location</th>
-                        <th>Activity</th>
-                        <th>Payout</th>
-                        <th>Action</th>
+                        <td><?= date('M d', strtotime($r['class_date'])) ?></td>
+                        <td><?= e($r['coach_name']) ?></td>
+                        <td><?= e($r['loc_name']) ?></td>
+                        <td><?= e($r['student_name']) ?></td>
+                        <td class="font-bold text-success">$<?= number_format($r['payout'], 2) ?></td>
+                        <td class="table-actions">
+                            <button type="button" onclick='editEntry(<?= json_encode($r) ?>)' class="btn-icon"><i class="fas fa-edit"></i></button>
+                            <form method="POST" onsubmit="return confirm('Delete?');" style="display:inline;">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="delete_id" value="<?= $r['id'] ?>">
+                                <button class="btn-icon danger"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($history as $r): ?>
-                        <tr>
-                            <td><?= date('M d', strtotime($r['class_date'])) ?></td>
-                            <td><?= htmlspecialchars($r['coach_name']) ?></td>
-                            <td><?= htmlspecialchars($r['loc_name']) ?></td>
-                            <td><?= htmlspecialchars($r['student_name']) ?></td>
-                            <td style="font-weight:bold; color:#28a745;">$<?= number_format($r['payout'], 2) ?></td>
-                            <td>
-                                <button type="button" onclick='editEntry(<?= json_encode($r) ?>)' style="background:none; border:none; color:#007bff; cursor:pointer; margin-right:10px;"><i class="fas fa-edit"></i></button>
-                                <form method="POST" onsubmit="return confirm('Delete?');" style="display:inline;">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="delete_id" value="<?= $r['id'] ?>">
-                                    <button style="background:none; border:none; color:red; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <script>
-        const rateMap = <?= json_encode($rates_map) ?>;
+<?php
+$extraJs = <<<JS
+    const rateMap = {$rates_map_json};
 
-        function updatePayout() {
-            const cid = document.getElementById('coach_id').value;
-            const lid = document.getElementById('location_id').value;
-            const payoutBox = document.getElementById('payout');
+    function updatePayout() {
+        const cid = document.getElementById('coach_id').value;
+        const lid = document.getElementById('location_id').value;
+        const payoutBox = document.getElementById('payout');
 
-            if (cid && lid) {
-                const key = cid + '_' + lid;
-                // JS will auto-fill the NET amount (Rate - Fee)
-                if (rateMap[key]) {
-                    payoutBox.value = rateMap[key];
-                } else {
-                    payoutBox.value = '0.00';
-                }
+        if (cid && lid) {
+            const key = cid + '_' + lid;
+            if (rateMap[key]) {
+                payoutBox.value = rateMap[key];
+            } else {
+                payoutBox.value = '0.00';
             }
         }
+    }
 
-        function editEntry(data) {
-            // Populate form with existing data
-            document.getElementById('form-action').value = 'edit';
-            document.getElementById('edit-id').value = data.id;
-            document.getElementById('coach_id').value = data.user_id;
-            document.getElementById('location_id').value = data.location_id;
-            document.querySelector('input[name="student_name"]').value = data.student_name;
-            document.querySelector('input[name="date"]').value = data.class_date;
-            document.querySelector('input[name="time"]').value = data.class_time || '';
-            document.getElementById('payout').value = data.payout;
+    function editEntry(data) {
+        document.getElementById('form-action').value = 'edit';
+        document.getElementById('edit-id').value = data.id;
+        document.getElementById('coach_id').value = data.user_id;
+        document.getElementById('location_id').value = data.location_id;
+        document.querySelector('input[name="student_name"]').value = data.student_name;
+        document.querySelector('input[name="date"]').value = data.class_date;
+        document.querySelector('input[name="time"]').value = data.class_time || '';
+        document.getElementById('payout').value = data.payout;
 
-            // Update UI
-            document.getElementById('form-title').textContent = 'Edit Entry';
-            document.getElementById('submit-btn').textContent = 'Update Entry';
-            document.getElementById('submit-btn').style.background = '#28a745';
-            document.getElementById('cancel-btn').style.display = 'block';
+        document.getElementById('form-title').textContent = 'Edit Entry';
+        document.getElementById('submit-btn').textContent = 'Update Entry';
+        document.getElementById('submit-btn').className = 'btn btn-success btn-block';
+        document.getElementById('cancel-btn').classList.remove('hidden');
 
-            // Scroll to form
-            document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+        document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        document.getElementById('class-form').reset();
+        document.getElementById('form-action').value = 'add';
+        document.getElementById('edit-id').value = '';
+
+        document.getElementById('form-title').textContent = 'Record Class';
+        document.getElementById('submit-btn').textContent = 'Save Entry';
+        document.getElementById('submit-btn').className = 'btn btn-primary btn-block';
+        document.getElementById('cancel-btn').classList.add('hidden');
+
+        document.querySelector('input[name="date"]').value = '{$today}';
+    }
+JS;
+
+$rates_map_json = json_encode($rates_map);
+$today = date('Y-m-d');
+
+// Re-output the JS with proper values
+echo "<script>
+    const rateMap = " . json_encode($rates_map) . ";
+
+    function updatePayout() {
+        const cid = document.getElementById('coach_id').value;
+        const lid = document.getElementById('location_id').value;
+        const payoutBox = document.getElementById('payout');
+
+        if (cid && lid) {
+            const key = cid + '_' + lid;
+            if (rateMap[key]) {
+                payoutBox.value = rateMap[key];
+            } else {
+                payoutBox.value = '0.00';
+            }
         }
+    }
 
-        function cancelEdit() {
-            // Reset form
-            document.getElementById('class-form').reset();
-            document.getElementById('form-action').value = 'add';
-            document.getElementById('edit-id').value = '';
+    function editEntry(data) {
+        document.getElementById('form-action').value = 'edit';
+        document.getElementById('edit-id').value = data.id;
+        document.getElementById('coach_id').value = data.user_id;
+        document.getElementById('location_id').value = data.location_id;
+        document.querySelector('input[name=\"student_name\"]').value = data.student_name;
+        document.querySelector('input[name=\"date\"]').value = data.class_date;
+        document.querySelector('input[name=\"time\"]').value = data.class_time || '';
+        document.getElementById('payout').value = data.payout;
 
-            // Reset UI
-            document.getElementById('form-title').textContent = 'Record Class';
-            document.getElementById('submit-btn').textContent = 'Save Entry';
-            document.getElementById('submit-btn').style.background = '#007bff';
-            document.getElementById('cancel-btn').style.display = 'none';
+        document.getElementById('form-title').textContent = 'Edit Entry';
+        document.getElementById('submit-btn').textContent = 'Update Entry';
+        document.getElementById('submit-btn').className = 'btn btn-success btn-block';
+        document.getElementById('cancel-btn').classList.remove('hidden');
 
-            // Reset date to today
-            document.querySelector('input[name="date"]').value = '<?= date('Y-m-d') ?>';
-        }
-    </script>
-</body>
+        document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+    }
 
-</html>
+    function cancelEdit() {
+        document.getElementById('class-form').reset();
+        document.getElementById('form-action').value = 'add';
+        document.getElementById('edit-id').value = '';
+
+        document.getElementById('form-title').textContent = 'Record Class';
+        document.getElementById('submit-btn').textContent = 'Save Entry';
+        document.getElementById('submit-btn').className = 'btn btn-primary btn-block';
+        document.getElementById('cancel-btn').classList.add('hidden');
+
+        document.querySelector('input[name=\"date\"]').value = '" . date('Y-m-d') . "';
+    }
+</script>";
+
+require_once 'includes/footer.php';
+?>
