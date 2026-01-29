@@ -1,5 +1,5 @@
 <?php
-// index.php - LOGIN PAGE
+// forgot_password.php - REQUEST PASSWORD RESET
 require_once 'includes/config.php';
 
 // Redirect if already logged in
@@ -8,8 +8,66 @@ if (isLoggedIn()) {
     exit();
 }
 
+$error = '';
+$success = false;
+
+// Handle form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim($_POST['email'] ?? '');
+
+    if (empty($email)) {
+        $error = 'Please enter your email address.';
+    } else {
+        // Check if user exists
+        $stmt = $pdo->prepare("SELECT id, name, email FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user) {
+            // Generate secure token
+            $token = bin2hex(random_bytes(32));
+            $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+            // Delete any existing tokens for this user
+            $pdo->prepare("DELETE FROM password_resets WHERE user_id = ?")->execute([$user['id']]);
+
+            // Insert new token
+            $stmt = $pdo->prepare("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)");
+            $stmt->execute([$user['id'], $token, $expires]);
+
+            // Build reset URL
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'];
+            $resetUrl = "{$protocol}://{$host}/reset_password.php?token={$token}";
+
+            // Send email
+            $to = $user['email'];
+            $subject = "GB Scheduler - Password Reset";
+            $message = "Hi {$user['name']},\n\n";
+            $message .= "You requested a password reset. Click the link below to reset your password:\n\n";
+            $message .= "{$resetUrl}\n\n";
+            $message .= "This link will expire in 1 hour.\n\n";
+            $message .= "If you didn't request this, please ignore this email.\n\n";
+            $message .= "- GB Scheduler Team";
+
+            $headers = "From: noreply@gbscheduler.com\r\n";
+            $headers .= "Reply-To: noreply@gbscheduler.com\r\n";
+            $headers .= "X-Mailer: PHP/" . phpversion();
+
+            if (mail($to, $subject, $message, $headers)) {
+                $success = true;
+            } else {
+                $error = 'Failed to send email. Please try again.';
+            }
+        } else {
+            // Don't reveal if email exists or not (security)
+            $success = true;
+        }
+    }
+}
+
 // Page setup
-$pageTitle = 'Login | GB Schedule';
+$pageTitle = 'Forgot Password | GB Schedule';
 $extraCss = <<<CSS
 
         :root {
@@ -33,7 +91,6 @@ $extraCss = <<<CSS
             color: var(--text-dark);
         }
 
-        /* Top decoration line for the page */
         body::before {
             content: "";
             position: absolute;
@@ -44,11 +101,10 @@ $extraCss = <<<CSS
             background: linear-gradient(90deg, var(--primary) 0%, #00d2ff 100%);
         }
 
-        .login-card {
+        .reset-card {
             background: white;
             padding: 40px;
             border-radius: 12px;
-            /* Soft, modern shadow */
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.02);
             width: 100%;
             max-width: 380px;
@@ -115,8 +171,7 @@ $extraCss = <<<CSS
             z-index: 1;
         }
 
-        .login-card input[type="email"],
-        .login-card input[type="password"] {
+        .reset-card input[type="email"] {
             width: 100%;
             padding: 12px 15px 12px 42px !important;
             margin-bottom: 0 !important;
@@ -129,7 +184,7 @@ $extraCss = <<<CSS
             color: #333;
         }
 
-        .login-card input:focus {
+        .reset-card input:focus {
             border-color: var(--primary);
             outline: none;
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
@@ -137,32 +192,6 @@ $extraCss = <<<CSS
 
         .input-wrapper:focus-within i {
             color: var(--primary);
-        }
-
-        .forgot-link {
-            display: block;
-            text-align: right;
-            margin-top: 8px;
-            font-size: 0.85rem;
-            color: var(--text-light);
-        }
-
-        .forgot-link:hover {
-            color: var(--primary);
-        }
-
-        .success-msg {
-            background-color: #f0fff4;
-            color: #22543d;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #9ae6b4;
-            font-size: 0.85rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
         }
 
         button {
@@ -203,6 +232,34 @@ $extraCss = <<<CSS
             gap: 8px;
         }
 
+        .success-msg {
+            background-color: #f0fff4;
+            color: #22543d;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #9ae6b4;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .success-msg i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: var(--primary);
+        }
+
         .footer-text {
             margin-top: 30px;
             font-size: 0.8rem;
@@ -213,53 +270,43 @@ CSS;
 require_once 'includes/header.php';
 ?>
 
-    <div class="login-card">
+    <div class="reset-card">
         <div class="logo-area">
             <div class="logo-circle">
-                <i class="fas fa-calendar-alt"></i>
+                <i class="fas fa-key"></i>
             </div>
-            <h2>Welcome Back</h2>
-            <p class="subtitle">Sign in to your dashboard</p>
+            <h2>Forgot Password</h2>
+            <p class="subtitle">Enter your email to reset your password</p>
         </div>
 
-        <?php if (isset($_GET['error'])): ?>
-            <div class="error-msg">
-                <i class="fas fa-exclamation-circle"></i> Invalid email or password.
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($_GET['reset'])): ?>
+        <?php if ($success): ?>
             <div class="success-msg">
-                <i class="fas fa-check-circle"></i> Password reset successfully. Please log in.
+                <i class="fas fa-envelope"></i>
+                If an account exists with that email, you'll receive a password reset link shortly.
             </div>
-        <?php endif; ?>
+            <a href="index.php" class="back-link"><i class="fas fa-arrow-left"></i> Back to Login</a>
+        <?php else: ?>
 
-        <?php if (isset($_GET['sent'])): ?>
-            <div class="success-msg">
-                <i class="fas fa-envelope"></i> Reset link sent to your email.
-            </div>
-        <?php endif; ?>
-
-        <form action="login_process.php" method="POST">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <div class="input-wrapper">
-                    <input type="email" id="email" name="email" placeholder="coach@example.com" required autofocus>
-                    <i class="fas fa-envelope"></i>
+            <?php if ($error): ?>
+                <div class="error-msg">
+                    <i class="fas fa-exclamation-circle"></i> <?= e($error) ?>
                 </div>
-            </div>
+            <?php endif; ?>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="input-wrapper">
-                    <input type="password" id="password" name="password" placeholder="Enter password" required>
-                    <i class="fas fa-lock"></i>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" name="email" placeholder="coach@example.com" required autofocus>
+                        <i class="fas fa-envelope"></i>
+                    </div>
                 </div>
-                <a href="forgot_password.php" class="forgot-link">Forgot password?</a>
-            </div>
 
-            <button type="submit">Log In</button>
-        </form>
+                <button type="submit">Send Reset Link</button>
+            </form>
+
+            <a href="index.php" class="back-link"><i class="fas fa-arrow-left"></i> Back to Login</a>
+        <?php endif; ?>
 
         <div class="footer-text">
             &copy; <?= date('Y') ?> GB Schedule System
