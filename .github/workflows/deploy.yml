@@ -1,0 +1,34 @@
+name: Deploy to SiteGround
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy via FTP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to FTP server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.gbscheduler.com
+          username: automation@gbscheduler.com
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          local-dir: ./
+          server-dir: public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .gitignore
+            db.php
+            *.sql
+            .DS_Store
+            README.md
