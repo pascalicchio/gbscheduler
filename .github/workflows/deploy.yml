@@ -23,7 +23,6 @@ jobs:
           port: 21
           local-dir: ./
           server-dir: gbscheduler.com/public_html/
-          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.git*/**
