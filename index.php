@@ -1,23 +1,17 @@
 <?php
 // index.php - LOGIN PAGE
-session_start();
+require_once 'includes/config.php';
 
 // Redirect if already logged in
-if (isset($_SESSION['user_id'])) {
+if (isLoggedIn()) {
     header("Location: dashboard.php");
     exit();
 }
-?>
 
-<!DOCTYPE html>
-<html lang="en">
+// Page setup
+$pageTitle = 'Login | GB Schedule';
+$extraCss = <<<CSS
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | GB Schedule</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
         :root {
             --primary: #007bff;
             --primary-hover: #0056b3;
@@ -187,10 +181,10 @@ if (isset($_SESSION['user_id'])) {
             font-size: 0.8rem;
             color: #999;
         }
-    </style>
-</head>
+CSS;
 
-<body>
+require_once 'includes/header.php';
+?>
 
     <div class="login-card">
         <div class="logo-area">
@@ -232,6 +226,4 @@ if (isset($_SESSION['user_id'])) {
         </div>
     </div>
 
-</body>
-
-</html>
+<?php require_once 'includes/footer.php'; ?>

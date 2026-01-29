@@ -1,16 +1,12 @@
 <?php
 // reports.php - INDIVIDUAL PAYROLL REPORT (Fixed Logic)
-session_start();
-require 'db.php';
+require_once 'includes/config.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+// Require login
+requireAuth();
 
-$user_role = $_SESSION['user_role'] ?? 'guest';
-$logged_in_user_id = $_SESSION['user_id'];
-$is_admin = ($user_role === 'admin');
+$is_admin = isAdmin();
+$logged_in_user_id = getUserId();
 
 // Determine Target User
 $target_user_id = $logged_in_user_id;
@@ -103,15 +99,10 @@ foreach ($locations_data as $ld) {
 }
 
 $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role != 'manager' ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC) : [];
-?>
 
-<!DOCTYPE html>
-<html>
-
-<head>
-    <title>Payroll Report: <?= htmlspecialchars($coach['name']) ?></title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+// Page setup
+$pageTitle = 'Payroll Report: ' . e($coach['name']) . ' | GB Scheduler';
+$extraCss = <<<CSS
         :root {
             --primary: #007bff;
             --bg: #f4f6f9;
@@ -287,13 +278,13 @@ $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role !=
             background: #e2e6ea;
             color: #555;
         }
-    </style>
-</head>
+CSS;
 
-<body>
+require_once 'includes/header.php';
+?>
 
     <div class="page-header">
-        <h2 style="margin:0; color:#2c3e50;">Payroll Report: <?= htmlspecialchars($coach['name']) ?></h2>
+        <h2 style="margin:0; color:#2c3e50;">Payroll Report: <?= e($coach['name']) ?></h2>
         <a href="dashboard.php" class="btn-back">Back to Schedule</a>
     </div>
 
@@ -351,7 +342,7 @@ $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role !=
                         <?php foreach ($data['reg'] as $rc): ?>
                             <tr>
                                 <td><?= date('M d', strtotime($rc['class_date'])) ?></td>
-                                <td><?= htmlspecialchars($rc['class_name']) ?></td>
+                                <td><?= e($rc['class_name']) ?></td>
                                 <td><span class="badge-role"><?= ucfirst($rc['position']) ?></span></td>
                                 <td><?= number_format($rc['hours'], 1) ?></td>
                                 <td class="money-cell">$<?= number_format($rc['pay'], 2) ?></td>
@@ -376,7 +367,7 @@ $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role !=
                         <?php foreach ($data['priv'] as $pc): ?>
                             <tr>
                                 <td><?= date('M d', strtotime($pc['class_date'])) ?></td>
-                                <td><?= htmlspecialchars($pc['student_name']) ?></td>
+                                <td><?= e($pc['student_name']) ?></td>
                                 <td><?= $pc['class_time'] ? date('g:i A', strtotime($pc['class_time'])) : '-' ?></td>
                                 <td class="money-cell">$<?= number_format($pc['payout'], 2) ?></td>
                             </tr>
@@ -387,6 +378,4 @@ $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role !=
         </div>
     <?php endforeach; ?>
 
-</body>
-
-</html>
+<?php require_once 'includes/footer.php'; ?>

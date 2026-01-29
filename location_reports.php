@@ -1,12 +1,9 @@
 <?php
 // location_reports.php - MASTER PAYROLL (Grouped by Location in Detailed View)
-session_start();
-require 'db.php';
+require_once 'includes/config.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    header("Location: dashboard.php");
-    exit();
-}
+// Require admin access
+requireAuth(['admin']);
 
 $start_date = $_GET['start'] ?? date('Y-m-01');
 $end_date   = $_GET['end'] ?? date('Y-m-t');
@@ -122,15 +119,10 @@ foreach ($master_data as $uid => $data) {
         return strtotime($a['date']) - strtotime($b['date']);
     });
 }
-?>
 
-<!DOCTYPE html>
-<html>
-
-<head>
-    <title>Payroll Report</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+// Page setup
+$pageTitle = 'Payroll Report | GB Scheduler';
+$extraCss = <<<CSS
         body {
             font-family: 'Segoe UI', sans-serif;
             padding: 20px;
@@ -454,10 +446,10 @@ foreach ($master_data as $uid => $data) {
                 break-inside: avoid;
             }
         }
-    </style>
-</head>
+CSS;
 
-<body>
+require_once 'includes/header.php';
+?>
 
     <div class="top-bar">
         <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
@@ -479,7 +471,7 @@ foreach ($master_data as $uid => $data) {
                 <option value="">All Coaches</option>
                 <?php foreach ($coaches as $c): ?>
                     <option value="<?= $c['id'] ?>" <?= $filter_coach_id == $c['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c['name']) ?>
+                        <?= e($c['name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -503,7 +495,7 @@ foreach ($master_data as $uid => $data) {
             <?php ob_start(); ?>
             <div class="loc-block">
                 <div class="loc-header">
-                    <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($loc['name']) ?></span>
+                    <span><i class="fas fa-map-marker-alt"></i> <?= e($loc['name']) ?></span>
                 </div>
                 <table class="sum-table">
                     <thead>
@@ -537,7 +529,7 @@ foreach ($master_data as $uid => $data) {
                             $loc_total += $loc_total_coach;
                             ?>
                             <tr>
-                                <td><?= htmlspecialchars($data['info']['name']) ?></td>
+                                <td><?= e($data['info']['name']) ?></td>
                                 <td><?= number_format($loc_reg_hrs, 2) ?></td>
                                 <td class="col-money" style="color:#666">$<?= number_format($loc_reg_pay, 2) ?></td>
                                 <td class="col-money" style="color:#666">$<?= number_format($loc_priv_pay, 2) ?></td>
@@ -583,7 +575,7 @@ foreach ($master_data as $uid => $data) {
         ?>
             <div class="coach-card">
                 <div class="coach-header">
-                    <h3><?= htmlspecialchars($data['info']['name']) ?></h3>
+                    <h3><?= e($data['info']['name']) ?></h3>
                     <div class="coach-stats">
                         <span class="header-badge">Reg: $<?= number_format($data['regular_pay'], 2) ?></span>
                         <span class="header-badge">Priv: $<?= number_format($data['private_pay'], 2) ?></span>
@@ -601,7 +593,7 @@ foreach ($master_data as $uid => $data) {
                     }
                 ?>
                     <div class="loc-sub-header">
-                        <span><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($loc_name) ?></span>
+                        <span><i class="fas fa-map-marker-alt"></i> <?= e($loc_name) ?></span>
                         <span class="loc-total-badge">Sub-Total: $<?= number_format($block_total, 2) ?></span>
                     </div>
                     <table class="detail-table">
@@ -623,7 +615,7 @@ foreach ($master_data as $uid => $data) {
                                     <td><?= $act['time'] ?></td>
                                     <td>
                                         <?php if ($act['type'] == 'regular'): ?>
-                                            <span class="badge badge-reg">Class</span> <?= htmlspecialchars($act['desc']) ?>
+                                            <span class="badge badge-reg">Class</span> <?= e($act['desc']) ?>
                                         <?php else: ?>
                                             <span class="badge badge-priv">Private</span>
                                         <?php endif; ?>
@@ -642,6 +634,4 @@ foreach ($master_data as $uid => $data) {
 
     <?php endif; ?>
 
-</body>
-
-</html>
+<?php require_once 'includes/footer.php'; ?>

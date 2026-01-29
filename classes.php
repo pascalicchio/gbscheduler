@@ -1,12 +1,9 @@
 <?php
 // classes.php - MANAGE CLASS TEMPLATES (WITH REFRESH FIX)
-session_start();
-require 'db.php';
+require_once 'includes/config.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    header("Location: dashboard.php");
-    exit();
-}
+// Require admin access
+requireAuth(['admin']);
 
 // --- 1. HANDLE POST ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 2. Delete template
         $stmt = $pdo->prepare("DELETE FROM class_templates WHERE id = ?");
         if ($stmt->execute([$id])) {
-            $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-trash'></i> Class deleted successfully.</div>";
+            setFlash("Class deleted successfully.", 'error');
         }
     }
 
@@ -42,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql = "UPDATE class_templates SET class_name=?, day_of_week=?, start_time=?, end_time=?, location_id=?, martial_art=? WHERE id=?";
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute([$name, $dayToSave, $start, $end, $loc, $art, $id])) {
-                $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-check'></i> Class updated successfully.</div>";
+                setFlash("Class updated successfully.");
             }
         } else {
             // BULK INSERT
@@ -54,9 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$name, $day, $start, $end, $loc, $art]);
                     $count++;
                 }
-                $_SESSION['flash_msg'] = "<div class='alert success'><i class='fas fa-plus'></i> $count classes added successfully.</div>";
+                setFlash("$count classes added successfully.");
             } else {
-                $_SESSION['flash_msg'] = "<div class='alert error'>Please select at least one day.</div>";
+                setFlash("Please select at least one day.", 'error');
             }
         }
     }
@@ -67,11 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // --- 2. DISPLAY FLASH MESSAGE ---
-$msg = "";
-if (isset($_SESSION['flash_msg'])) {
-    $msg = $_SESSION['flash_msg'];
-    unset($_SESSION['flash_msg']);
-}
+$msg = getFlash();
 
 // --- 3. FETCH DATA ---
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -93,15 +86,10 @@ foreach ($all_classes as $c) {
 }
 
 $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-?>
 
-<!DOCTYPE html>
-<html>
-
-<head>
-    <title>Manage Classes</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+// Page setup
+$pageTitle = 'Manage Classes | GB Scheduler';
+$extraCss = <<<CSS
         /* --- PREMIUM DESIGN SYSTEM --- */
         :root {
             --primary: #007bff;
@@ -399,10 +387,10 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                 position: static;
             }
         }
-    </style>
-</head>
+CSS;
 
-<body>
+require_once 'includes/header.php';
+?>
 
     <div class="top-bar">
         <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
@@ -472,7 +460,7 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
             <?php foreach ($grouped_classes as $lid => $group): ?>
                 <div class="loc-group">
                     <div class="loc-header">
-                        <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($group['name']) ?>
+                        <i class="fas fa-map-marker-alt"></i> <?= e($group['name']) ?>
                     </div>
                     <table id="table-<?= $lid ?>">
                         <thead>
@@ -516,7 +504,7 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
                                             <?= strtoupper($c['martial_art']) ?>
                                         </span>
                                     </td>
-                                    <td class="col-name"><?= htmlspecialchars($c['class_name']) ?></td>
+                                    <td class="col-name"><?= e($c['class_name']) ?></td>
                                     <td>
                                         <div class="actions">
                                             <button class="btn-icon btn-edit" onclick='editClass(<?= json_encode($c) ?>)' title="Edit">
@@ -608,6 +596,4 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
         }
     </script>
 
-</body>
-
-</html>
+<?php require_once 'includes/footer.php'; ?>

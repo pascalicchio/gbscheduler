@@ -1,23 +1,19 @@
 <?php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'includes/config.php';
 
-require 'db.php';
-date_default_timezone_set('America/New_York');
+// Require login
+requireAuth();
 
-$user_role = $_SESSION['user_role'] ?? 'guest';
-$user_id = $_SESSION['user_id'];
+$user_role = getUserRole();
+$user_id = getUserId();
 
 // PERMISSIONS
-$is_admin = ($user_role === 'admin');
-$is_manager = ($user_role === 'manager');
+$is_admin = isAdmin();
+$is_manager = isManager();
 $is_coach = ($user_role === 'user');
 
 // "Can Manage" = Access to sidebar tools
-$can_view_tools = ($is_admin || $is_manager);
+$can_view_tools = canManage();
 
 // 1. Fetch Locations
 try {
