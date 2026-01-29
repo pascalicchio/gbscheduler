@@ -58,14 +58,14 @@ if (!empty($locations)) {
 
 $art_display = ($martial_art_filter === 'mt') ? 'Muay Thai' : 'Jiu-Jitsu';
 
-// 2. Fetch Coaches (ONLY needed for Admin sidebar now)
-// ADDED: is_active filter
+// 2. Fetch Coaches with rates (needed for Admin sidebar and payroll calculation)
 $coaches = [];
+$coach_rates = []; // For JS payroll calculation
 if ($is_admin) {
-    $coach_sql = "SELECT u.id, u.name, u.color_code 
-                  FROM users u 
-                  WHERE u.role != 'manager' 
-                  AND u.is_active = 1 "; // <-- ADDED THIS LINE
+    $coach_sql = "SELECT u.id, u.name, u.color_code, u.rate_head_coach, u.rate_helper
+                  FROM users u
+                  WHERE u.role != 'manager'
+                  AND u.is_active = 1 ";
     $coach_params = [];
 
     if ($filter_location_id !== '0') {
@@ -83,6 +83,14 @@ if ($is_admin) {
         $stmt_coaches = $pdo->prepare($coach_sql . " ORDER BY u.name ASC");
         $stmt_coaches->execute($coach_params);
         $coaches = $stmt_coaches->fetchAll(PDO::FETCH_ASSOC);
+
+        // Build rates lookup for JavaScript
+        foreach ($coaches as $c) {
+            $coach_rates[$c['id']] = [
+                'head' => (float)$c['rate_head_coach'],
+                'helper' => (float)$c['rate_helper']
+            ];
+        }
     } catch (PDOException $e) {
     }
 }
@@ -139,6 +147,7 @@ function get_schedule_data($pdo, $location_id, $start_date, $end_date, $user_rol
         $schedule_grid[$key]['data'][$day_name] = [
             'template_id' => $template['template_id'],
             'date' => $class_date,
+            'start_time' => $template['start_time'],
             'end_time' => $template['end_time'],
             'coaches' => []
         ];
@@ -263,6 +272,39 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        /* Payroll Summary Box */
+        .payroll-box {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .payroll-header {
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .payroll-amount {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .payroll-details {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        .payroll-details i {
+            margin-right: 5px;
         }
 
         .filter-box label {
@@ -593,8 +635,8 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         body.screenshot-mode .bulk-btn,
         body.screenshot-mode .clone-dropdown,
         body.screenshot-mode #download-btn,
-        body.screenshot-mode #lock-btn {
-            /* HIDE LOCK BUTTON IN SCREENSHOT */
+        body.screenshot-mode #lock-btn,
+        body.screenshot-mode #payroll-summary {
             display: none !important;
         }
 
@@ -667,6 +709,19 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         </div>
 
         <?php if ($is_admin): ?>
+            <!-- Payroll Summary Box -->
+            <div id="payroll-summary" class="payroll-box">
+                <div class="payroll-header">
+                    <i class="fas fa-calculator"></i> Week Payroll
+                </div>
+                <div class="payroll-amount">
+                    $<span id="payroll-total">0.00</span>
+                </div>
+                <div class="payroll-details">
+                    <span><i class="fas fa-user-tie"></i> <span id="payroll-assignments">0</span> assignments</span>
+                </div>
+            </div>
+
             <h3 style="color:var(--secondary-dark); margin-top:0">Assignments</h3>
             <div style="background:#e8f4fd; padding:10px; border-radius:6px; border:1px dashed #b6d4fe; font-size:0.85em; color:#0c5460; margin-bottom:15px;">
                 <i class="fas fa-info-circle"></i> Drag a coach onto the <b>[A] All Week</b> button to assign them to every class in that row.
@@ -797,7 +852,9 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                                     <div class="slot"
                                         id="slot-<?= $cell['template_id'] ?>-<?= $cell['date'] ?>"
                                         data-tid="<?= $cell['template_id'] ?>"
-                                        data-date="<?= $cell['date'] ?>">
+                                        data-date="<?= $cell['date'] ?>"
+                                        data-start="<?= $cell['start_time'] ?>"
+                                        data-end="<?= $cell['end_time'] ?>">
 
                                         <?php foreach ($cell['coaches'] as $c): ?>
                                             <?php $fontWeight = ($c['position'] === 'head') ? 'bold' : 'normal'; ?>
@@ -829,8 +886,57 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             const locId = '<?= $filter_location_id ?>';
             const artFilter = '<?= $martial_art_filter ?>';
             const nextWeekStart = '<?= $next_week_start ?>';
-            // NEW: Pass lock state to JS
             const isLocked = <?= $is_locked ? 'true' : 'false' ?>;
+
+            // Coach rates for payroll calculation
+            const coachRates = <?= json_encode($coach_rates) ?>;
+
+            // Calculate hours between two time strings (HH:MM:SS)
+            function getHours(startTime, endTime) {
+                const [sh, sm] = startTime.split(':').map(Number);
+                const [eh, em] = endTime.split(':').map(Number);
+                let hours = (eh + em/60) - (sh + sm/60);
+                // Handle overnight or negative (shouldn't happen but safety)
+                if (hours < 0) hours += 24;
+                // Minimum 1 hour
+                return Math.max(hours, 1);
+            }
+
+            // Calculate total payroll from all assignments on screen
+            function calculatePayroll() {
+                let total = 0;
+                let assignmentCount = 0;
+
+                $('.slot').each(function() {
+                    const slot = $(this);
+                    const startTime = slot.data('start');
+                    const endTime = slot.data('end');
+
+                    if (!startTime || !endTime) return;
+
+                    const hours = getHours(startTime, endTime);
+
+                    slot.find('.assignment').each(function() {
+                        const assignment = $(this);
+                        const coachId = assignment.data('cid');
+                        const role = assignment.data('role');
+
+                        if (coachRates[coachId]) {
+                            const rate = coachRates[coachId][role] || 0;
+                            total += hours * rate;
+                            assignmentCount++;
+                        }
+                    });
+                });
+
+                $('#payroll-total').text(total.toFixed(2));
+                $('#payroll-assignments').text(assignmentCount);
+            }
+
+            // Calculate on page load
+            if (isAdmin) {
+                calculatePayroll();
+            }
 
             $('#loc-filter, #art-filter').change(function() {
                 window.location = `dashboard.php?week_start=${weekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
@@ -968,6 +1074,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                                 </div>`;
                                     slot.append(html);
                                     $('.slot').sortable('refresh');
+                                    calculatePayroll(); // Update payroll
                                 }
                             }, 'json');
                         }
@@ -1018,6 +1125,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                         class_date: slot.data('date')
                     }, function() {
                         el.remove();
+                        calculatePayroll(); // Update payroll
                     });
                 });
 
