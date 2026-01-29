@@ -15,6 +15,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
 // 2. Get Input Data (JSON)
 $input = json_decode(file_get_contents('php://input'), true);
 $sourceWeekStart = $input['sourceWeekStart'] ?? null;
+$locationId = $input['location_id'] ?? null;
+$martialArt = $input['martial_art'] ?? null;
 
 if (!$sourceWeekStart) {
     http_response_code(400);
@@ -36,26 +38,47 @@ try {
     // This query finds all assignments in the source week, adds 7 days to their date,
     // and inserts them into the table.
     // The "AND NOT EXISTS" clause prevents creating duplicate entries if you run this twice.
+    // If location_id and martial_art are provided, filter by those (clone current view only)
+
+    $params = ['sStart' => $sStart, 'sEnd' => $sEnd];
+    $filterJoin = "";
+    $filterWhere = "";
+
+    // If filtering by location and/or martial art, join with class_templates
+    if ($locationId || $martialArt) {
+        $filterJoin = "JOIN class_templates ct ON ea.template_id = ct.id";
+
+        if ($locationId) {
+            $filterWhere .= " AND ct.location_id = :locationId";
+            $params['locationId'] = $locationId;
+        }
+        if ($martialArt) {
+            $filterWhere .= " AND ct.martial_art = :martialArt";
+            $params['martialArt'] = $martialArt;
+        }
+    }
 
     $sql = "
         INSERT INTO event_assignments (template_id, class_date, user_id, position)
-        SELECT 
-            ea.template_id, 
+        SELECT
+            ea.template_id,
             DATE_ADD(ea.class_date, INTERVAL 7 DAY) as new_date,
-            ea.user_id, 
+            ea.user_id,
             ea.position
         FROM event_assignments ea
+        $filterJoin
         WHERE ea.class_date BETWEEN :sStart AND :sEnd
+        $filterWhere
         AND NOT EXISTS (
-            SELECT 1 FROM event_assignments ea2 
-            WHERE ea2.template_id = ea.template_id 
+            SELECT 1 FROM event_assignments ea2
+            WHERE ea2.template_id = ea.template_id
             AND ea2.class_date = DATE_ADD(ea.class_date, INTERVAL 7 DAY)
             AND ea2.user_id = ea.user_id
         )
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['sStart' => $sStart, 'sEnd' => $sEnd]);
+    $stmt->execute($params);
 
     $count = $stmt->rowCount();
 

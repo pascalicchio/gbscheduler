@@ -383,6 +383,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             table-layout: fixed;
             overflow: hidden;
+            height: 1px; /* Trick to make td height:100% work */
         }
 
         #custom-schedule th {
@@ -405,11 +406,16 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         #custom-schedule td {
-            border-bottom: 1px solid #f0f0f0;
-            border-right: 1px solid #f0f0f0;
+            border-bottom: 1px solid #e8ecf0;
+            border-right: 1px solid #e8ecf0;
             vertical-align: top;
-            padding: 0;
-            height: auto;
+            padding: 6px;
+            height: 100%;
+        }
+
+        #custom-schedule td > .slot {
+            height: calc(100% - 0px);
+            min-height: 70px;
         }
 
         .time-col {
@@ -466,27 +472,56 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         .slot {
-            height: auto;
-            min-height: 50px;
+            height: 100%;
+            min-height: 60px;
             padding: 8px;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            background-color: transparent;
+            background-color: #f8fafc;
+            border: 2px dashed #d1d9e0;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .slot:empty::before {
+            content: "Drop coach here";
+            color: #a0aec0;
+            font-size: 0.75em;
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .slot:hover {
+            border-color: #93c5fd;
+            background-color: #eff6ff;
         }
 
         .assignment {
             font-size: 0.85em;
-            padding: 6px 8px;
-            border-radius: 4px;
+            padding: 8px 10px;
+            border-radius: 5px;
             background: #fff;
             border: 1px solid #e1e4e8;
             cursor: move;
             position: relative;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+
+        .assignment:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-1px);
         }
 
         .del-btn {
@@ -513,8 +548,16 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         .ui-state-hover {
-            background: #e3f2fd !important;
-            box-shadow: inset 0 0 0 2px var(--primary-color) !important;
+            background: #dbeafe !important;
+            border-color: var(--primary-color) !important;
+            border-style: solid !important;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15) !important;
+        }
+
+        .ui-state-hover::before {
+            content: "Release to drop" !important;
+            color: var(--primary-color) !important;
+            font-weight: 600;
         }
 
         .sidebar-link {
@@ -552,11 +595,60 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 
         body.screenshot-mode .del-btn,
         body.screenshot-mode .bulk-btn,
-        body.screenshot-mode #clone-week-btn,
+        body.screenshot-mode .clone-dropdown,
         body.screenshot-mode #download-btn,
         body.screenshot-mode #lock-btn {
             /* HIDE LOCK BUTTON IN SCREENSHOT */
             display: none !important;
+        }
+
+        /* Clone Dropdown Styles */
+        .clone-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 280px;
+            z-index: 1000;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .clone-dropdown-menu.show {
+            display: block;
+        }
+
+        .clone-option {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .clone-option:last-child {
+            border-bottom: none;
+        }
+
+        .clone-option:hover {
+            background: #f8f9fa;
+        }
+
+        .clone-option i {
+            margin-right: 10px;
+            color: #007bff;
+            width: 16px;
+        }
+
+        .clone-option-desc {
+            display: block;
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 4px;
+            margin-left: 26px;
         }
     </style>
 </head>
@@ -647,9 +739,21 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                         <button id="lock-btn" onclick="toggleLock('lock')" class="nav-btn btn-unlock" title="Lock Week"><i class="fas fa-lock-open"></i></button>
                     <?php endif; ?>
 
-                    <button id="clone-week-btn" class="nav-btn" style="background:#007bff; color:white; margin-left:15px;">
-                        <i class="fas fa-copy"></i> Clone Week
-                    </button>
+                    <div class="clone-dropdown" style="position:relative; display:inline-block; margin-left:15px;">
+                        <button id="clone-dropdown-btn" class="nav-btn" style="background:#007bff; color:white;">
+                            <i class="fas fa-copy"></i> Clone Week <i class="fas fa-caret-down" style="margin-left:5px;"></i>
+                        </button>
+                        <div id="clone-dropdown-menu" class="clone-dropdown-menu">
+                            <div class="clone-option" data-mode="current">
+                                <i class="fas fa-filter"></i> Clone current view only
+                                <span class="clone-option-desc"><?= $current_location_name ?> - <?= $art_display ?></span>
+                            </div>
+                            <div class="clone-option" data-mode="all">
+                                <i class="fas fa-globe"></i> Clone entire schedule
+                                <span class="clone-option-desc">All locations & martial arts</span>
+                            </div>
+                        </div>
+                    </div>
                 <?php endif; ?>
 
                 <?php if ($can_view_tools): ?>
@@ -921,28 +1025,69 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                     });
                 });
 
-                $('#clone-week-btn').click(async () => {
-                    if (!confirm(`Clone schedule from ${weekStart} to next week?`)) return;
-                    try {
-                        const response = await fetch('api/clone_classes.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                sourceWeekStart: weekStart
-                            })
-                        });
-                        const result = await response.json();
-                        if (response.ok) {
-                            alert(`Cloned ${result.clonedCount} classes.`);
-                            if (result.clonedCount > 0) window.location = `dashboard.php?week_start=${nextWeekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
-                        } else alert('Error: ' + result.message);
-                    } catch (e) {
-                        alert('Clone failed.');
-                    }
-                });
             }
+
+            // Clone Dropdown Logic
+            $('#clone-dropdown-btn').click(function(e) {
+                e.stopPropagation();
+                $('#clone-dropdown-menu').toggleClass('show');
+            });
+
+            // Close dropdown when clicking outside
+            $(document).click(function() {
+                $('#clone-dropdown-menu').removeClass('show');
+            });
+
+            // Prevent dropdown from closing when clicking inside
+            $('#clone-dropdown-menu').click(function(e) {
+                e.stopPropagation();
+            });
+
+            // Handle clone options
+            $('.clone-option').click(async function() {
+                const mode = $(this).data('mode');
+                const locationName = '<?= addslashes($current_location_name) ?>';
+                const artName = '<?= $art_display ?>';
+
+                let confirmMsg, requestBody;
+
+                if (mode === 'current') {
+                    confirmMsg = `Clone only ${locationName} ${artName} schedule to next week?`;
+                    requestBody = {
+                        sourceWeekStart: weekStart,
+                        location_id: locId,
+                        martial_art: artFilter
+                    };
+                } else {
+                    confirmMsg = `Clone schedule from ${weekStart} to next week?`;
+                    requestBody = {
+                        sourceWeekStart: weekStart
+                    };
+                }
+
+                $('#clone-dropdown-menu').removeClass('show');
+
+                if (!confirm(confirmMsg)) return;
+
+                try {
+                    const response = await fetch('api/clone_classes.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert(`Cloned ${result.clonedCount} assignments.`);
+                        window.location = `dashboard.php?week_start=${nextWeekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (e) {
+                    alert('Clone failed.');
+                }
+            });
         });
 
         // NEW: Lock Toggle Function
