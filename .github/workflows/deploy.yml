@@ -22,7 +22,8 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
           local-dir: ./
-          server-dir: ./
+          server-dir: gbscheduler.com/public_html/
+          dangerous-clean-slate: true
           exclude: |
             **/.git*
             **/.git*/**
