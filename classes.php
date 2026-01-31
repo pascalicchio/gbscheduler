@@ -8,18 +8,23 @@ requireAuth(['admin']);
 // --- 1. HANDLE POST ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // DELETE
-    if (isset($_POST['action']) && $_POST['action'] === 'delete') {
+    // DEACTIVATE (Soft delete - keeps payment history intact)
+    if (isset($_POST['action']) && $_POST['action'] === 'deactivate') {
         $id = $_POST['id'];
+        $deactivate_date = $_POST['deactivate_date'] ?? date('Y-m-d');
+        $stmt = $pdo->prepare("UPDATE class_templates SET is_active = 0, deactivated_at = ? WHERE id = ?");
+        if ($stmt->execute([$deactivate_date, $id])) {
+            $formatted_date = date('M j, Y', strtotime($deactivate_date));
+            setFlash("Class will be deactivated starting $formatted_date. Payment history preserved.", 'success');
+        }
+    }
 
-        // 1. Delete associated assignments first
-        $delDeps = $pdo->prepare("DELETE FROM event_assignments WHERE template_id = ?");
-        $delDeps->execute([$id]);
-
-        // 2. Delete template
-        $stmt = $pdo->prepare("DELETE FROM class_templates WHERE id = ?");
+    // REACTIVATE
+    elseif (isset($_POST['action']) && $_POST['action'] === 'reactivate') {
+        $id = $_POST['id'];
+        $stmt = $pdo->prepare("UPDATE class_templates SET is_active = 1, deactivated_at = NULL WHERE id = ?");
         if ($stmt->execute([$id])) {
-            setFlash("Class deleted successfully.", 'error');
+            setFlash("Class reactivated successfully!", 'success');
         }
     }
 
@@ -59,7 +64,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // PRG REDIRECT (Prevents refresh resubmission)
-    header("Location: classes.php");
+    // Preserve the show_inactive parameter if it was set
+    $redirect = "classes.php";
+    if (isset($_GET['show_inactive']) && $_GET['show_inactive'] == '1') {
+        $redirect .= "?show_inactive=1";
+    }
+    header("Location: $redirect");
     exit();
 }
 
@@ -69,14 +79,21 @@ $msg = getFlash();
 // --- 3. FETCH DATA ---
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+// Check if showing inactive classes
+$show_inactive = isset($_GET['show_inactive']) && $_GET['show_inactive'] == '1';
+
 // Fetch Class Templates Grouped by Location
 $sql_classes = "
-    SELECT ct.*, l.name as loc_name 
+    SELECT ct.*, l.name as loc_name
     FROM class_templates ct
     JOIN locations l ON ct.location_id = l.id
-    ORDER BY l.name, FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'), start_time
+    " . ($show_inactive ? "" : "WHERE ct.is_active = 1") . "
+    ORDER BY l.name, ct.is_active DESC, FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'), start_time
 ";
 $all_classes = $pdo->query($sql_classes)->fetchAll(PDO::FETCH_ASSOC);
+
+// Count inactive classes
+$inactive_count = $pdo->query("SELECT COUNT(*) FROM class_templates WHERE is_active = 0")->fetchColumn();
 
 // Group classes by Location ID
 $grouped_classes = [];
@@ -353,6 +370,11 @@ $extraCss = <<<CSS
             color: #c62828;
         }
 
+        .tag-mma {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
         .actions {
             display: flex;
             gap: 10px;
@@ -377,6 +399,152 @@ $extraCss = <<<CSS
             color: var(--danger);
         }
 
+        .btn-reactivate:hover {
+            color: var(--success);
+        }
+
+        /* Inactive class styling */
+        .row-inactive {
+            background: #f8f8f8 !important;
+            opacity: 0.6;
+        }
+
+        .row-inactive td {
+            color: #999 !important;
+        }
+
+        .tag-inactive {
+            background: #e0e0e0;
+            color: #666;
+            font-size: 0.7em;
+            margin-left: 5px;
+        }
+
+        /* Toggle switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            background: #e9ecef;
+            padding: 4px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .toggle-container a,
+        .toggle-container span.toggle-btn {
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        .toggle-inactive-btn {
+            background: transparent;
+            color: #666;
+        }
+
+        .toggle-inactive-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .inactive-badge {
+            background: #ffc107;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        /* Deactivation modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-box h3 {
+            margin-top: 0;
+            color: var(--secondary);
+        }
+
+        .modal-box p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .modal-box input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-cancel {
+            background: #e9ecef;
+            color: #666;
+        }
+
+        .btn-confirm {
+            background: var(--danger);
+            color: white;
+        }
+
+        .deactivation-date {
+            font-size: 0.75em;
+            color: #e65100;
+            display: block;
+            margin-top: 2px;
+        }
+
         @media (max-width: 900px) {
             .main-layout {
                 flex-direction: column;
@@ -392,9 +560,39 @@ CSS;
 require_once 'includes/header.php';
 ?>
 
+    <script>
+        // Persist filter preference
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasShowInactive = urlParams.has('show_inactive');
+            const savedPref = localStorage.getItem('classes_show_inactive');
+
+            // Only redirect if no URL param and we have a saved preference for showing inactive
+            if (!hasShowInactive && savedPref === '1') {
+                window.location.href = 'classes.php?show_inactive=1';
+            }
+        })();
+    </script>
+
     <div class="top-bar">
         <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         <h2 style="margin:0; color:#2c3e50;">Manage Classes</h2>
+        <div class="toggle-container">
+            <?php if ($show_inactive): ?>
+                <a href="classes.php" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '0');">
+                    <i class="fas fa-check-circle"></i> Active Only
+                </a>
+                <span class="toggle-btn toggle-active"><i class="fas fa-eye"></i> Showing All</span>
+            <?php else: ?>
+                <span class="toggle-btn toggle-active"><i class="fas fa-check-circle"></i> Active Only</span>
+                <a href="classes.php?show_inactive=1" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '1');">
+                    <i class="fas fa-eye"></i> Show Inactive
+                    <?php if ($inactive_count > 0): ?>
+                        <span class="inactive-badge"><?= $inactive_count ?></span>
+                    <?php endif; ?>
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="main-layout">
@@ -407,8 +605,8 @@ require_once 'includes/header.php';
                 <input type="hidden" name="template_id" id="template_id">
                 <input type="hidden" name="original_day" id="original_day">
 
-                <label>Class Name</label>
-                <input type="text" name="class_name" id="class_name" required placeholder="e.g. Fundamentals">
+                <label>Class Name <small style="color:#999; font-weight:normal;">(optional)</small></label>
+                <input type="text" name="class_name" id="class_name" placeholder="e.g. Fundamentals">
 
                 <div class="row">
                     <div class="col">
@@ -425,6 +623,7 @@ require_once 'includes/header.php';
                         <select name="martial_art" id="martial_art">
                             <option value="bjj">BJJ</option>
                             <option value="mt">Muay Thai</option>
+                            <option value="mma">MMA</option>
                         </select>
                     </div>
                 </div>
@@ -486,6 +685,7 @@ require_once 'includes/header.php';
                                         <option value="">All Types</option>
                                         <option value="BJJ">BJJ</option>
                                         <option value="MT">MT</option>
+                                        <option value="MMA">MMA</option>
                                     </select>
                                 </th>
                                 <th><input type="text" class="table-filter" onkeyup="filterTable(<?= $lid ?>)" id="filter-name-<?= $lid ?>" placeholder="Filter Name..."></th>
@@ -493,30 +693,58 @@ require_once 'includes/header.php';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($group['classes'] as $c): ?>
-                                <tr class="data-row">
-                                    <td class="col-day"><?= $c['day_of_week'] ?></td>
+                            <?php foreach ($group['classes'] as $c):
+                                $isInactive = !$c['is_active'];
+                            ?>
+                                <tr class="data-row <?= $isInactive ? 'row-inactive' : '' ?>">
+                                    <td class="col-day">
+                                        <?= $c['day_of_week'] ?>
+                                        <?php if ($isInactive): ?>
+                                            <span class="tag tag-inactive">INACTIVE</span>
+                                            <?php if (!empty($c['deactivated_at'])): ?>
+                                                <span class="deactivation-date">from <?= date('M j', strtotime($c['deactivated_at'])) ?></span>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="col-time" style="color:#666;">
                                         <?= date('g:i A', strtotime($c['start_time'])) ?>
                                     </td>
                                     <td class="col-type">
-                                        <span class="tag <?= $c['martial_art'] == 'bjj' ? 'tag-bjj' : 'tag-mt' ?>">
+                                        <?php
+                                        $tagClass = 'tag-bjj';
+                                        if ($c['martial_art'] == 'mt') $tagClass = 'tag-mt';
+                                        elseif ($c['martial_art'] == 'mma') $tagClass = 'tag-mma';
+                                        ?>
+                                        <span class="tag <?= $tagClass ?>">
                                             <?= strtoupper($c['martial_art']) ?>
                                         </span>
                                     </td>
                                     <td class="col-name"><?= e($c['class_name']) ?></td>
                                     <td>
                                         <div class="actions">
-                                            <button class="btn-icon btn-edit" onclick='editClass(<?= json_encode($c) ?>)' title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <form method="POST" onsubmit="return confirm('Delete this class template?\nThis will remove all scheduled coaches for this class.');" style="display:inline;">
-                                                <input type="hidden" name="action" value="delete">
-                                                <input type="hidden" name="id" value="<?= $c['id'] ?>">
-                                                <button type="submit" class="btn-icon btn-del" title="Delete">
-                                                    <i class="fas fa-trash"></i>
+                                            <?php if ($isInactive): ?>
+                                                <!-- Reactivate button for inactive classes -->
+                                                <form method="POST" onsubmit="return confirm('Reactivate this class?');" style="display:inline;">
+                                                    <input type="hidden" name="action" value="reactivate">
+                                                    <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                                                    <button type="submit" class="btn-icon btn-reactivate" title="Reactivate">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <!-- Edit and Deactivate for active classes -->
+                                                <button class="btn-icon btn-edit" onclick='editClass(<?= json_encode($c) ?>)' title="Edit">
+                                                    <i class="fas fa-edit"></i>
                                                 </button>
-                                            </form>
+                                                <form method="POST" onsubmit="return confirmDeactivate(this);" style="display:inline;">
+                                                    <input type="hidden" name="action" value="deactivate">
+                                                    <input type="hidden" name="id" value="<?= $c['id'] ?>">
+                                                    <input type="hidden" name="deactivate_date" class="deactivate-date-input">
+                                                    <button type="submit" class="btn-icon btn-del" title="Deactivate">
+                                                        <i class="fas fa-power-off"></i>
+                                                    </button>
+                                                </form>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -594,6 +822,46 @@ require_once 'includes/header.php';
             document.getElementById('form-title').innerHTML = "<i class='fas fa-calendar-plus'></i> Add New Class";
             document.getElementById('btn-submit').innerText = "Save Classes";
         }
+
+        // Deactivation modal
+        let pendingDeactivateForm = null;
+
+        function confirmDeactivate(form) {
+            pendingDeactivateForm = form;
+            document.getElementById('deactivate-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('deactivate-modal').classList.add('show');
+            return false;
+        }
+
+        function closeModal() {
+            document.getElementById('deactivate-modal').classList.remove('show');
+            pendingDeactivateForm = null;
+        }
+
+        function submitDeactivation() {
+            if (pendingDeactivateForm) {
+                const date = document.getElementById('deactivate-date').value;
+                pendingDeactivateForm.querySelector('.deactivate-date-input').value = date;
+                pendingDeactivateForm.submit();
+            }
+        }
     </script>
+
+    <!-- Deactivation Modal -->
+    <div id="deactivate-modal" class="modal-overlay" onclick="if(event.target === this) closeModal();">
+        <div class="modal-box">
+            <h3><i class="fas fa-power-off" style="color: var(--danger);"></i> Deactivate Class</h3>
+            <p>Choose when this class should stop appearing on the schedule. It will still show for dates before this.</p>
+            <label style="font-weight: 600; font-size: 0.9em;">Deactivation Date:</label>
+            <input type="date" id="deactivate-date">
+            <p style="font-size: 0.85em; color: #888; margin-top: 0;">
+                <i class="fas fa-info-circle"></i> Payment history will be preserved. You can reactivate anytime.
+            </p>
+            <div class="modal-buttons">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="button" class="btn-confirm" onclick="submitDeactivation()">Deactivate</button>
+            </div>
+        </div>
+    </div>
 
 <?php require_once 'includes/footer.php'; ?>

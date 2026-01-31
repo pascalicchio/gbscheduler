@@ -11,7 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $email = $_POST['email'];
     $role = $_POST['role'];
-    $coach_type = $_POST['coach_type'];
+    // Convert coach_types array to comma-separated string for SET column
+    $coach_types_arr = $_POST['coach_types'] ?? ['bjj'];
+    $coach_type = implode(',', $coach_types_arr);
     $color = $_POST['color_code'];
     $rate_head = $_POST['rate_head_coach'] ?? 0;
     $rate_helper = $_POST['rate_helper'] ?? 0;
@@ -131,6 +133,47 @@ $extraCss = <<<CSS
     .loc-item input { width: auto; margin: 0; }
     .loc-item label { margin: 0; font-weight: normal; cursor: pointer; }
 
+    .martial-arts-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: var(--radius-sm);
+    }
+
+    .ma-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: normal;
+        margin: 0;
+    }
+
+    .ma-checkbox:hover {
+        border-color: #007bff;
+        background: #f0f7ff;
+    }
+
+    .ma-checkbox input:checked + span {
+        color: #007bff;
+        font-weight: 600;
+    }
+
+    .ma-checkbox input { width: auto; margin: 0; }
+
+    .ma-all {
+        background: #e9ecef;
+        border-style: dashed;
+    }
+
     .rate-box {
         background: #f9f9f9;
         padding: 15px;
@@ -240,12 +283,28 @@ require_once 'includes/header.php';
 
             <div class="form-row">
                 <div class="form-group">
-                    <label>Martial Art</label>
-                    <select name="coach_type">
-                        <option value="bjj" <?= $user['coach_type'] == 'bjj' ? 'selected' : '' ?>>Jiu Jitsu</option>
-                        <option value="mt" <?= $user['coach_type'] == 'mt' ? 'selected' : '' ?>>Muay Thai</option>
-                        <option value="both" <?= $user['coach_type'] == 'both' ? 'selected' : '' ?>>Both</option>
-                    </select>
+                    <label>Martial Arts</label>
+                    <?php
+                    $coach_types = explode(',', $user['coach_type'] ?? '');
+                    ?>
+                    <div class="martial-arts-grid">
+                        <label class="ma-checkbox">
+                            <input type="checkbox" name="coach_types[]" value="bjj" <?= in_array('bjj', $coach_types) ? 'checked' : '' ?>>
+                            <span>Jiu Jitsu</span>
+                        </label>
+                        <label class="ma-checkbox">
+                            <input type="checkbox" name="coach_types[]" value="mt" <?= in_array('mt', $coach_types) ? 'checked' : '' ?>>
+                            <span>Muay Thai</span>
+                        </label>
+                        <label class="ma-checkbox">
+                            <input type="checkbox" name="coach_types[]" value="mma" <?= in_array('mma', $coach_types) ? 'checked' : '' ?>>
+                            <span>MMA</span>
+                        </label>
+                        <label class="ma-checkbox ma-all">
+                            <input type="checkbox" id="select-all-ma" onchange="toggleAllMartialArts(this)">
+                            <span>Select All</span>
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Color</label>
@@ -279,6 +338,25 @@ function toggleRateBox(id) {
     if (check.checked) box.classList.add('active');
     else box.classList.remove('active');
 }
+
+function toggleAllMartialArts(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('input[name="coach_types[]"]');
+    checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+}
+
+// Update "Select All" state on page load and when individual checkboxes change
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('input[name="coach_types[]"]');
+    const selectAll = document.getElementById('select-all-ma');
+
+    function updateSelectAll() {
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        selectAll.checked = allChecked;
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
+    updateSelectAll();
+});
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

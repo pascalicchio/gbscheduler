@@ -177,6 +177,7 @@ $extraCss = <<<CSS
             border-radius: 4px;
             width: 100%;
             box-sizing: border-box;
+            height: 35px;
         }
 
         button {
@@ -185,6 +186,8 @@ $extraCss = <<<CSS
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            height: 35px;
+            box-sizing: border-box;
         }
 
         .btn-blue {
@@ -275,6 +278,7 @@ $extraCss = <<<CSS
             font-size: 1em;
             opacity: 0.8;
             font-weight: normal;
+            color: white !important;
         }
 
         .global-summary .big-number {
@@ -484,7 +488,10 @@ require_once 'includes/header.php';
                 <button type="submit" name="view" value="detailed" class="btn-outline <?= $view_mode == 'detailed' ? 'active' : '' ?>">Detailed View</button>
             </div>
         </div>
-        <button type="submit" class="btn-blue">Apply Filters</button>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn-blue">Apply Filters</button>
+        </div>
     </form>
 
     <?php if ($view_mode === 'summary'): ?>

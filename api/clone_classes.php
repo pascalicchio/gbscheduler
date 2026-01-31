@@ -44,18 +44,24 @@ try {
     $filterJoin = "";
     $filterWhere = "";
 
-    // If filtering by location and/or martial art, join with class_templates
-    if ($locationId || $martialArt) {
-        $filterJoin = "JOIN class_templates ct ON ea.template_id = ct.id";
+    // Always join with class_templates to check active status and optionally filter by location/martial_art
+    $filterJoin = "JOIN class_templates ct ON ea.template_id = ct.id";
+    // Only clone classes that:
+    // 1. Were active by the target week (active_from <= target week end)
+    // 2. Haven't been deactivated before target week
+    $targetWeekStart = date('Y-m-d', strtotime($sourceWeekStart . ' + 7 days'));
+    $targetWeekEnd = date('Y-m-d', strtotime($targetWeekStart . ' + 6 days'));
+    $filterWhere = " AND ct.active_from <= :targetWeekEnd AND (ct.deactivated_at IS NULL OR ct.deactivated_at > :targetWeekStart)";
+    $params['targetWeekStart'] = $targetWeekStart;
+    $params['targetWeekEnd'] = $targetWeekEnd;
 
-        if ($locationId) {
-            $filterWhere .= " AND ct.location_id = :locationId";
-            $params['locationId'] = $locationId;
-        }
-        if ($martialArt) {
-            $filterWhere .= " AND ct.martial_art = :martialArt";
-            $params['martialArt'] = $martialArt;
-        }
+    if ($locationId) {
+        $filterWhere .= " AND ct.location_id = :locationId";
+        $params['locationId'] = $locationId;
+    }
+    if ($martialArt) {
+        $filterWhere .= " AND ct.martial_art = :martialArt";
+        $params['martialArt'] = $martialArt;
     }
 
     $sql = "

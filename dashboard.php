@@ -56,7 +56,9 @@ if (!empty($locations)) {
     }
 }
 
-$art_display = ($martial_art_filter === 'mt') ? 'Muay Thai' : 'Jiu-Jitsu';
+$art_display = 'Jiu-Jitsu';
+if ($martial_art_filter === 'mt') $art_display = 'Muay Thai';
+elseif ($martial_art_filter === 'mma') $art_display = 'MMA';
 
 // 2. Fetch Coaches with rates (needed for Admin sidebar and payroll calculation)
 $coaches = [];
@@ -74,9 +76,11 @@ if ($is_admin) {
     }
 
     if ($martial_art_filter === 'bjj') {
-        $coach_sql .= " AND u.coach_type IN ('bjj', 'both') ";
+        $coach_sql .= " AND FIND_IN_SET('bjj', u.coach_type) > 0 ";
     } elseif ($martial_art_filter === 'mt') {
-        $coach_sql .= " AND u.coach_type IN ('mt', 'both') ";
+        $coach_sql .= " AND FIND_IN_SET('mt', u.coach_type) > 0 ";
+    } elseif ($martial_art_filter === 'mma') {
+        $coach_sql .= " AND FIND_IN_SET('mma', u.coach_type) > 0 ";
     }
 
     try {
@@ -103,7 +107,15 @@ function get_schedule_data($pdo, $location_id, $start_date, $end_date, $user_rol
     $start_timestamp = strtotime($start_date);
 
     $params = [];
-    $where = ["1=1"];
+    // Show classes that:
+    // 1. Were active by this week (active_from <= week_end)
+    // 2. AND haven't been deactivated before this week (deactivated_at IS NULL OR > week_start)
+    $where = [
+        "active_from <= :week_end",
+        "(deactivated_at IS NULL OR deactivated_at > :week_start)"
+    ];
+    $params['week_start'] = $start_date;
+    $params['week_end'] = $end_date;
     $sql = "SELECT id AS template_id, class_name, day_of_week, start_time, end_time, location_id FROM class_templates";
 
     if ($location_id !== '0') {
@@ -710,6 +722,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             <select id="art-filter">
                 <option value="bjj" <?= $martial_art_filter == 'bjj' ? 'selected' : '' ?>>BJJ</option>
                 <option value="mt" <?= $martial_art_filter == 'mt' ? 'selected' : '' ?>>Muay Thai</option>
+                <option value="mma" <?= $martial_art_filter == 'mma' ? 'selected' : '' ?>>MMA</option>
             </select>
         </div>
 

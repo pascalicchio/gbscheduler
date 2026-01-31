@@ -43,8 +43,10 @@ try {
         $loc = $_POST['location_id'];
         $art = $_POST['martial_art'];
 
-        $sql = "SELECT id, day_of_week FROM class_templates WHERE start_time = ? AND class_name = ? AND location_id = ?";
-        $params = [$time, $name, $loc];
+        // Calculate week end for active_from check
+        $week_end = date('Y-m-d', strtotime($week_start . ' + 6 days'));
+        $sql = "SELECT id, day_of_week FROM class_templates WHERE start_time = ? AND class_name = ? AND location_id = ? AND active_from <= ? AND (deactivated_at IS NULL OR deactivated_at > ?)";
+        $params = [$time, $name, $loc, $week_end, $week_start];
 
         if ($art !== 'all') {
             $sql .= " AND martial_art = ?";

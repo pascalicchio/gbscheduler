@@ -157,16 +157,20 @@ $extraCss = <<<CSS
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            height: 35px;
+            box-sizing: border-box;
         }
 
         .btn-filter {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 9px 20px;
+            padding: 8px 20px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            height: 35px;
+            box-sizing: border-box;
         }
 
         .stats-grid {
@@ -301,7 +305,10 @@ require_once 'includes/header.php';
         <?php endif; ?>
         <div class="form-group"><label>Start Date</label><input type="date" name="start_date" value="<?= $start_date ?>"></div>
         <div class="form-group"><label>End Date</label><input type="date" name="end_date" value="<?= $end_date ?>"></div>
-        <div class="form-group"><button type="submit" class="btn-filter">Generate Report</button></div>
+        <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn-filter">Generate Report</button>
+        </div>
     </form>
 
     <div class="stats-grid">

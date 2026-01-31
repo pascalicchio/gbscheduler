@@ -23,14 +23,15 @@ if ($location_id !== '0') {
     $params['location_id'] = $location_id;
 }
 
-// *** Optional: Add the Martial Art Filter if your AJAX call provides it ***
-// Assuming users table has a 'coach_type' column ('bjj', 'mt', 'both')
+// *** Martial Art Filter ***
+// Filter coaches based on their coach_type (SET column with 'bjj', 'mt', 'mma')
 if ($martial_art_filter === 'bjj') {
-    $sql .= " AND coach_type IN ('bjj', 'both') ";
+    $sql .= " AND FIND_IN_SET('bjj', coach_type) > 0 ";
 } elseif ($martial_art_filter === 'mt') {
-    $sql .= " AND coach_type IN ('mt', 'both') ";
+    $sql .= " AND FIND_IN_SET('mt', coach_type) > 0 ";
+} elseif ($martial_art_filter === 'mma') {
+    $sql .= " AND FIND_IN_SET('mma', coach_type) > 0 ";
 }
-// *************************************************************************
 
 $sql .= " ORDER BY name ASC";
 $stmt = $pdo->prepare($sql);
