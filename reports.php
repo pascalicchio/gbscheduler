@@ -137,10 +137,19 @@ $extraCss = <<<CSS
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .filter-row {
             display: flex;
             gap: 15px;
             align-items: flex-end;
-            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
@@ -171,6 +180,102 @@ $extraCss = <<<CSS
             font-weight: bold;
             height: 35px;
             box-sizing: border-box;
+        }
+
+        .date-presets {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .date-presets button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .date-presets button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .date-presets button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .page-header h2 {
+                font-size: 1.3em;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .form-group {
+                width: 100%;
+            }
+
+            .form-group input,
+            .form-group select {
+                width: 100%;
+            }
+
+            .btn-filter {
+                width: 100%;
+                margin-top: 5px;
+            }
+
+            .date-presets {
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stat-card .value {
+                font-size: 1.8em;
+            }
+
+            .loc-header {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .loc-summary {
+                font-size: 0.8em;
+            }
+
+            table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 8px 10px;
+            }
         }
 
         .stats-grid {
@@ -292,22 +397,35 @@ require_once 'includes/header.php';
         <a href="dashboard.php" class="btn-back">Back to Schedule</a>
     </div>
 
-    <form class="filter-card" method="GET">
-        <?php if ($is_admin): ?>
+    <form class="filter-card" method="GET" id="reportForm">
+        <div class="filter-row">
+            <?php if ($is_admin): ?>
+                <div class="form-group">
+                    <label>Select Coach</label>
+                    <select name="coach_id">
+                        <?php foreach ($all_coaches as $c): ?>
+                            <option value="<?= $c['id'] ?>" <?= ($target_user_id == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
             <div class="form-group">
-                <label>Select Coach</label>
-                <select name="coach_id">
-                    <?php foreach ($all_coaches as $c): ?>
-                        <option value="<?= $c['id'] ?>" <?= ($target_user_id == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label>Start Date</label>
+                <input type="date" name="start_date" id="start_date" value="<?= $start_date ?>">
             </div>
-        <?php endif; ?>
-        <div class="form-group"><label>Start Date</label><input type="date" name="start_date" value="<?= $start_date ?>"></div>
-        <div class="form-group"><label>End Date</label><input type="date" name="end_date" value="<?= $end_date ?>"></div>
-        <div class="form-group">
-            <label>&nbsp;</label>
-            <button type="submit" class="btn-filter">Generate Report</button>
+            <div class="form-group">
+                <label>End Date</label>
+                <input type="date" name="end_date" id="end_date" value="<?= $end_date ?>">
+            </div>
+            <div class="form-group">
+                <button type="submit" class="btn-filter">Generate Report</button>
+            </div>
+        </div>
+        <div class="date-presets">
+            <button type="button" onclick="setPreset('this-month')">This Month</button>
+            <button type="button" onclick="setPreset('last-month')">Last Month</button>
+            <button type="button" onclick="setPreset('this-week')">This Week</button>
+            <button type="button" onclick="setPreset('last-week')">Last Week</button>
         </div>
     </form>
 
@@ -384,5 +502,71 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
+
+<script>
+function setPreset(preset) {
+    const startInput = document.getElementById('start_date');
+    const endInput = document.getElementById('end_date');
+    const today = new Date();
+    let start, end;
+
+    // Clear active state from all buttons
+    document.querySelectorAll('.date-presets button').forEach(btn => btn.classList.remove('active'));
+
+    switch(preset) {
+        case 'this-month':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+        case 'last-month':
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+            break;
+        case 'this-week':
+            // Week starts on Sunday
+            const dayOfWeek = today.getDay(); // 0 = Sunday
+            start = new Date(today);
+            start.setDate(today.getDate() - dayOfWeek);
+            end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            break;
+        case 'last-week':
+            const lastWeekDay = today.getDay();
+            start = new Date(today);
+            start.setDate(today.getDate() - lastWeekDay - 7);
+            end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            break;
+    }
+
+    startInput.value = formatDate(start);
+    endInput.value = formatDate(end);
+
+    // Mark preset button as active
+    event.target.classList.add('active');
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Highlight active preset on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const startVal = document.getElementById('start_date').value;
+    const endVal = document.getElementById('end_date').value;
+    const today = new Date();
+
+    // Check if current dates match any preset
+    const thisMonthStart = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    const thisMonthEnd = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+
+    if (startVal === thisMonthStart && endVal === thisMonthEnd) {
+        document.querySelector('.date-presets button:nth-child(1)').classList.add('active');
+    }
+});
+</script>
 
 <?php require_once 'includes/footer.php'; ?>
