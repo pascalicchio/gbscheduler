@@ -853,12 +853,6 @@ require_once 'includes/header.php';
             }
         }
 
-        // Initialize Flatpickr for deactivation date
-        const deactivatePicker = flatpickr('#deactivate-date', {
-            dateFormat: 'Y-m-d',
-            locale: { firstDayOfWeek: 0 },
-            defaultDate: new Date()
-        });
     </script>
 
     <!-- Deactivation Modal -->
@@ -877,5 +871,14 @@ require_once 'includes/header.php';
             </div>
         </div>
     </div>
+
+    <script>
+        // Initialize Flatpickr for deactivation date (must be after modal HTML)
+        const deactivatePicker = flatpickr('#deactivate-date', {
+            dateFormat: 'Y-m-d',
+            locale: { firstDayOfWeek: 0 },
+            defaultDate: new Date()
+        });
+    </script>
 
 <?php require_once 'includes/footer.php'; ?>

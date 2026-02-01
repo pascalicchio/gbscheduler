@@ -903,10 +903,10 @@ require_once 'includes/header.php';
                 $activities_by_date[$act['date']][] = $act;
             }
 
-            // Sort activities within each day by time
+            // Sort activities within each day by time (convert 12h to 24h for proper sorting)
             foreach ($activities_by_date as $date => &$acts) {
                 usort($acts, function($a, $b) {
-                    return strcmp($a['time'], $b['time']);
+                    return strtotime($a['time']) - strtotime($b['time']);
                 });
             }
             unset($acts);
