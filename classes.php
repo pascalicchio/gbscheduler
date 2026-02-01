@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // DEACTIVATE (Soft delete - keeps payment history intact)
     if (isset($_POST['action']) && $_POST['action'] === 'deactivate') {
         $id = $_POST['id'];
-        $deactivate_date = $_POST['deactivate_date'] ?? date('Y-m-d');
+        $deactivate_date = !empty($_POST['deactivate_date']) ? $_POST['deactivate_date'] : date('Y-m-d');
         $stmt = $pdo->prepare("UPDATE class_templates SET is_active = 0, deactivated_at = ? WHERE id = ?");
         if ($stmt->execute([$deactivate_date, $id])) {
             $formatted_date = date('M j, Y', strtotime($deactivate_date));
