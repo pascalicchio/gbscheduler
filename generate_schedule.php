@@ -76,6 +76,7 @@ $locations = $pdo->query("SELECT * FROM locations")->fetchAll(PDO::FETCH_ASSOC);
 
 <head>
     <title>Generate Schedule</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
