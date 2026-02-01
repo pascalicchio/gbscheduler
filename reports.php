@@ -17,6 +17,7 @@ if ($is_admin && isset($_GET['coach_id']) && $_GET['coach_id'] !== '') {
 // Date Filters
 $start_date = $_GET['start_date'] ?? date('Y-m-01');
 $end_date = $_GET['end_date'] ?? date('Y-m-t');
+$view_mode = $_GET['view'] ?? 'list';
 
 // 1. Fetch User Data
 $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -385,6 +386,195 @@ $extraCss = <<<CSS
             background: #e2e6ea;
             color: #555;
         }
+
+        /* View Mode Buttons */
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-view {
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        .btn-view.active {
+            background: #2c3e50;
+            color: white;
+            border-color: #2c3e50;
+        }
+
+        /* Calendar View Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #dee2e6;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        .calendar-day.other-month {
+            background: #f8f9fa;
+        }
+
+        .calendar-day.today {
+            background: #fff3cd;
+        }
+
+        .day-number {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+
+        .day-activities {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .activity-item {
+            font-size: 0.75em;
+            padding: 4px 6px;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .activity-item.regular {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 3px solid #1565c0;
+        }
+
+        .activity-item.private {
+            background: #fff3e0;
+            color: #e65100;
+            border-left: 3px solid #e65100;
+        }
+
+        .activity-time {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .activity-desc {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .activity-pay {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .day-total {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #eee;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #28a745;
+            text-align: right;
+        }
+
+        .location-group {
+            margin-bottom: 4px;
+        }
+
+        .location-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .location-label {
+            font-size: 0.65em;
+            font-weight: bold;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            padding: 2px 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 900px) {
+            .calendar-grid {
+                font-size: 0.85em;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                padding: 4px;
+            }
+
+            .activity-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1px;
+            }
+
+            .activity-desc {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .calendar-header {
+                padding: 8px 4px;
+                font-size: 0.7em;
+            }
+
+            .calendar-day {
+                min-height: 60px;
+            }
+
+            .day-number {
+                font-size: 0.8em;
+            }
+
+            .activity-item {
+                padding: 2px 4px;
+                font-size: 0.7em;
+            }
+
+            .activity-time {
+                display: none;
+            }
+
+            .day-total {
+                font-size: 0.7em;
+            }
+        }
 CSS;
 
 require_once 'includes/header.php';
@@ -416,6 +606,13 @@ require_once 'includes/header.php';
                 <input type="text" name="end_date" id="end_date" value="<?= $end_date ?>" readonly>
             </div>
             <div class="form-group">
+                <label>View</label>
+                <div class="view-toggle">
+                    <button type="submit" name="view" value="list" class="btn-view <?= $view_mode == 'list' ? 'active' : '' ?>">List</button>
+                    <button type="submit" name="view" value="calendar" class="btn-view <?= $view_mode == 'calendar' ? 'active' : '' ?>">Calendar</button>
+                </div>
+            </div>
+            <div class="form-group">
                 <button type="submit" class="btn-filter">Generate Report</button>
             </div>
         </div>
@@ -435,6 +632,8 @@ require_once 'includes/header.php';
             <div class="value money">$<?= number_format($grand_total_pay, 2) ?></div>
         </div>
     </div>
+
+    <?php if ($view_mode === 'list'): ?>
 
     <?php foreach ($locations_data as $loc_id => $data): ?>
         <div class="location-section">
@@ -494,6 +693,131 @@ require_once 'includes/header.php';
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
+
+    <?php else: ?>
+        <?php
+        // Build activities array for calendar view
+        $all_activities = [];
+
+        // Add regular classes
+        foreach ($regular_classes as $rc) {
+            $hours = (float)$rc['hours'];
+            if ($hours < 1) $hours = 1.0;
+            $rate = ($rc['position'] === 'head') ? $coach['rate_head_coach'] : $coach['rate_helper'];
+            $pay = $hours * $rate;
+
+            $all_activities[] = [
+                'type' => 'regular',
+                'date' => $rc['class_date'],
+                'time' => date('g:i A', strtotime($rc['start_time'])),
+                'desc' => $rc['class_name'],
+                'location' => $rc['location_name'],
+                'pay' => $pay
+            ];
+        }
+
+        // Add private classes
+        foreach ($private_classes as $pc) {
+            $all_activities[] = [
+                'type' => 'private',
+                'date' => $pc['class_date'],
+                'time' => $pc['class_time'] ? date('g:i A', strtotime($pc['class_time'])) : '-',
+                'desc' => $pc['student_name'],
+                'location' => $pc['location_name'],
+                'pay' => $pc['payout']
+            ];
+        }
+
+        // Group activities by date
+        $activities_by_date = [];
+        foreach ($all_activities as $act) {
+            $activities_by_date[$act['date']][] = $act;
+        }
+
+        // Sort activities within each day by time
+        foreach ($activities_by_date as $date => &$acts) {
+            usort($acts, function($a, $b) {
+                return strcmp($a['time'], $b['time']);
+            });
+        }
+        unset($acts);
+
+        // Calculate calendar range based on start_date
+        $cal_start = new DateTime($start_date);
+        $cal_start->modify('first day of this month');
+        $cal_end = new DateTime($start_date);
+        $cal_end->modify('last day of this month');
+
+        // Adjust to start on Sunday
+        $first_day_of_week = (int)$cal_start->format('w');
+        $cal_start->modify("-{$first_day_of_week} days");
+
+        // Adjust to end on Saturday
+        $last_day_of_week = (int)$cal_end->format('w');
+        $days_to_add = 6 - $last_day_of_week;
+        $cal_end->modify("+{$days_to_add} days");
+
+        $current_month = date('n', strtotime($start_date));
+        $today = date('Y-m-d');
+        ?>
+
+        <div class="calendar-grid">
+            <!-- Header Row -->
+            <div class="calendar-header">Sun</div>
+            <div class="calendar-header">Mon</div>
+            <div class="calendar-header">Tue</div>
+            <div class="calendar-header">Wed</div>
+            <div class="calendar-header">Thu</div>
+            <div class="calendar-header">Fri</div>
+            <div class="calendar-header">Sat</div>
+
+            <!-- Calendar Days -->
+            <?php
+            $current = clone $cal_start;
+            while ($current <= $cal_end):
+                $date_str = $current->format('Y-m-d');
+                $is_other_month = (int)$current->format('n') !== $current_month;
+                $is_today = $date_str === $today;
+                $day_activities = $activities_by_date[$date_str] ?? [];
+                $day_total = array_sum(array_column($day_activities, 'pay'));
+
+                // Group by location
+                $by_location = [];
+                foreach ($day_activities as $act) {
+                    $by_location[$act['location']][] = $act;
+                }
+
+                $classes = ['calendar-day'];
+                if ($is_other_month) $classes[] = 'other-month';
+                if ($is_today) $classes[] = 'today';
+            ?>
+                <div class="<?= implode(' ', $classes) ?>">
+                    <div class="day-number"><?= $current->format('j') ?></div>
+                    <?php if (!empty($by_location)): ?>
+                        <div class="day-activities">
+                            <?php foreach ($by_location as $loc_name => $acts): ?>
+                                <div class="location-group">
+                                    <div class="location-label"><?= e($loc_name) ?></div>
+                                    <?php foreach ($acts as $act): ?>
+                                        <div class="activity-item <?= $act['type'] ?>">
+                                            <span class="activity-time"><?= $act['time'] ?></span>
+                                            <span class="activity-desc"><?= $act['type'] === 'regular' ? e($act['desc']) : 'Private' ?></span>
+                                            <span class="activity-pay">$<?= number_format($act['pay'], 0) ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="day-total">$<?= number_format($day_total, 2) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php
+                $current->modify('+1 day');
+            endwhile;
+            ?>
+        </div>
+
+    <?php endif; ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

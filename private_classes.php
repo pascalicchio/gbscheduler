@@ -428,36 +428,32 @@ echo "<script>
     });
 
     // Filter date pickers with presets
-    let filterStartPicker, filterEndPicker;
-
     const filterFpConfig = {
         dateFormat: 'Y-m-d',
         locale: { firstDayOfWeek: 0 }
     };
 
-    filterStartPicker = flatpickr('#filter_start', {
+    const filterStartPicker = flatpickr('#filter_start', {
         ...filterFpConfig,
-        onReady: function(selectedDates, dateStr, instance) {
-            instance.calendarContainer.appendChild(createPresetButtons(instance, filterStartPicker, filterEndPicker));
-        },
         onChange: function(selectedDates) {
-            if (selectedDates[0] && filterEndPicker) {
+            if (selectedDates[0]) {
                 filterEndPicker.set('minDate', selectedDates[0]);
             }
         }
     });
 
-    filterEndPicker = flatpickr('#filter_end', {
+    const filterEndPicker = flatpickr('#filter_end', {
         ...filterFpConfig,
-        onReady: function(selectedDates, dateStr, instance) {
-            instance.calendarContainer.appendChild(createPresetButtons(instance, filterStartPicker, filterEndPicker));
-        },
         onChange: function(selectedDates) {
-            if (selectedDates[0] && filterStartPicker) {
+            if (selectedDates[0]) {
                 filterStartPicker.set('maxDate', selectedDates[0]);
             }
         }
     });
+
+    // Add preset buttons after both pickers are initialized
+    filterStartPicker.calendarContainer.appendChild(createPresetButtons(filterStartPicker, filterStartPicker, filterEndPicker));
+    filterEndPicker.calendarContainer.appendChild(createPresetButtons(filterEndPicker, filterStartPicker, filterEndPicker));
 </script>";
 
 require_once 'includes/footer.php';

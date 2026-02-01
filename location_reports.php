@@ -469,6 +469,177 @@ $extraCss = <<<CSS
             display: none;
         }
 
+        /* Calendar View Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #dee2e6;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        .calendar-day.other-month {
+            background: #f8f9fa;
+        }
+
+        .calendar-day.today {
+            background: #fff3cd;
+        }
+
+        .day-number {
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #495057;
+            margin-bottom: 6px;
+        }
+
+        .day-activities {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .activity-item {
+            font-size: 0.75em;
+            padding: 4px 6px;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .activity-item.regular {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 3px solid #1565c0;
+        }
+
+        .activity-item.private {
+            background: #fff3e0;
+            color: #e65100;
+            border-left: 3px solid #e65100;
+        }
+
+        .activity-time {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .activity-desc {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .activity-pay {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .day-total {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #eee;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #28a745;
+            text-align: right;
+        }
+
+        .location-group {
+            margin-bottom: 4px;
+        }
+
+        .location-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .location-label {
+            font-size: 0.65em;
+            font-weight: bold;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            padding: 2px 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+        }
+
+        .btn-outline:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 900px) {
+            .calendar-grid {
+                font-size: 0.85em;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+                padding: 4px;
+            }
+
+            .activity-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1px;
+            }
+
+            .activity-desc {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .calendar-header {
+                padding: 8px 4px;
+                font-size: 0.7em;
+            }
+
+            .calendar-day {
+                min-height: 60px;
+            }
+
+            .day-number {
+                font-size: 0.8em;
+            }
+
+            .activity-item {
+                padding: 2px 4px;
+                font-size: 0.7em;
+            }
+
+            .activity-time {
+                display: none;
+            }
+
+            .day-total {
+                font-size: 0.7em;
+            }
+        }
+
         .btn-pdf {
             background: #dc3545;
             color: white;
@@ -540,8 +711,9 @@ require_once 'includes/header.php';
         <div class="form-group">
             <label>View Mode</label>
             <div style="display:flex; gap:5px;">
-                <button type="submit" name="view" value="summary" class="btn-outline <?= $view_mode == 'summary' ? 'active' : '' ?>">Summary View</button>
-                <button type="submit" name="view" value="detailed" class="btn-outline <?= $view_mode == 'detailed' ? 'active' : '' ?>">Detailed View</button>
+                <button type="submit" name="view" value="summary" class="btn-outline <?= $view_mode == 'summary' ? 'active' : '' ?>">Summary</button>
+                <button type="submit" name="view" value="detailed" class="btn-outline <?= $view_mode == 'detailed' ? 'active' : '' ?>">Detailed</button>
+                <button type="submit" name="view" value="calendar" id="btn-calendar" class="btn-outline <?= $view_mode == 'calendar' ? 'active' : '' ?>" <?= empty($filter_coach_id) ? 'disabled title="Select a coach first"' : '' ?>>Calendar</button>
             </div>
         </div>
         <div class="form-group">
@@ -625,7 +797,7 @@ require_once 'includes/header.php';
             if ($has_data) echo $html; ?>
         <?php endforeach; ?>
 
-    <?php else: ?>
+    <?php elseif ($view_mode === 'detailed'): ?>
 
         <div style="margin-bottom: 20px; text-align: right;">
             <button type="button" class="btn-pdf" onclick="exportPDF()" id="pdf-btn">
@@ -718,6 +890,118 @@ require_once 'includes/header.php';
             </div>
         <?php endforeach; ?>
         </div><!-- end pdf-content -->
+
+    <?php elseif ($view_mode === 'calendar' && $filter_coach_id): ?>
+        <?php
+        // Get the selected coach's data
+        $coach_data = $master_data[$filter_coach_id] ?? null;
+
+        if ($coach_data):
+            // Group activities by date
+            $activities_by_date = [];
+            foreach ($coach_data['activities'] as $act) {
+                $activities_by_date[$act['date']][] = $act;
+            }
+
+            // Sort activities within each day by time
+            foreach ($activities_by_date as $date => &$acts) {
+                usort($acts, function($a, $b) {
+                    return strcmp($a['time'], $b['time']);
+                });
+            }
+            unset($acts);
+
+            // Calculate calendar range based on start_date
+            $cal_start = new DateTime($start_date);
+            $cal_start->modify('first day of this month');
+            $cal_end = new DateTime($start_date);
+            $cal_end->modify('last day of this month');
+
+            // Adjust to start on Sunday
+            $first_day_of_week = (int)$cal_start->format('w'); // 0 = Sunday
+            $cal_start->modify("-{$first_day_of_week} days");
+
+            // Adjust to end on Saturday
+            $last_day_of_week = (int)$cal_end->format('w');
+            $days_to_add = 6 - $last_day_of_week;
+            $cal_end->modify("+{$days_to_add} days");
+
+            $current_month = date('n', strtotime($start_date));
+            $today = date('Y-m-d');
+        ?>
+
+        <div class="coach-card" style="margin-bottom: 20px;">
+            <div class="coach-header">
+                <h3><i class="fas fa-calendar-alt"></i> <?= e($coach_data['info']['name']) ?> - <?= date('F Y', strtotime($start_date)) ?></h3>
+                <div class="coach-stats">
+                    <span class="header-badge">Reg: $<?= number_format($coach_data['regular_pay'], 2) ?></span>
+                    <span class="header-badge">Priv: $<?= number_format($coach_data['private_pay'], 2) ?></span>
+                    <span class="header-badge total">Total: $<?= number_format($coach_data['total_pay'], 2) ?></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="calendar-grid">
+            <!-- Header Row -->
+            <div class="calendar-header">Sun</div>
+            <div class="calendar-header">Mon</div>
+            <div class="calendar-header">Tue</div>
+            <div class="calendar-header">Wed</div>
+            <div class="calendar-header">Thu</div>
+            <div class="calendar-header">Fri</div>
+            <div class="calendar-header">Sat</div>
+
+            <!-- Calendar Days -->
+            <?php
+            $current = clone $cal_start;
+            while ($current <= $cal_end):
+                $date_str = $current->format('Y-m-d');
+                $is_other_month = (int)$current->format('n') !== $current_month;
+                $is_today = $date_str === $today;
+                $day_activities = $activities_by_date[$date_str] ?? [];
+                $day_total = array_sum(array_column($day_activities, 'pay'));
+
+                // Group by location
+                $by_location = [];
+                foreach ($day_activities as $act) {
+                    $by_location[$act['location']][] = $act;
+                }
+
+                $classes = ['calendar-day'];
+                if ($is_other_month) $classes[] = 'other-month';
+                if ($is_today) $classes[] = 'today';
+            ?>
+                <div class="<?= implode(' ', $classes) ?>">
+                    <div class="day-number"><?= $current->format('j') ?></div>
+                    <?php if (!empty($by_location)): ?>
+                        <div class="day-activities">
+                            <?php foreach ($by_location as $loc_name => $acts): ?>
+                                <div class="location-group">
+                                    <div class="location-label"><?= e($loc_name) ?></div>
+                                    <?php foreach ($acts as $act): ?>
+                                        <div class="activity-item <?= $act['type'] ?>">
+                                            <span class="activity-time"><?= $act['time'] ?></span>
+                                            <span class="activity-desc"><?= $act['type'] === 'regular' ? e($act['desc']) : 'Private' ?></span>
+                                            <span class="activity-pay">$<?= number_format($act['pay'], 0) ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="day-total">$<?= number_format($day_total, 2) ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php
+                $current->modify('+1 day');
+            endwhile;
+            ?>
+        </div>
+
+        <?php else: ?>
+            <div class="alert" style="background:#fff3cd; padding:20px; border-radius:8px; text-align:center;">
+                <i class="fas fa-exclamation-triangle"></i> No data found for the selected coach.
+            </div>
+        <?php endif; ?>
 
     <?php endif; ?>
 
@@ -821,6 +1105,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (startInput.value) endPicker.set('minDate', startInput.value);
     if (endInput.value) startPicker.set('maxDate', endInput.value);
+
+    // Enable/disable Calendar button based on coach selection
+    const coachSelect = document.querySelector('select[name="coach_id"]');
+    const calendarBtn = document.getElementById('btn-calendar');
+
+    if (coachSelect && calendarBtn) {
+        coachSelect.addEventListener('change', function() {
+            if (this.value) {
+                calendarBtn.disabled = false;
+                calendarBtn.title = '';
+            } else {
+                calendarBtn.disabled = true;
+                calendarBtn.title = 'Select a coach first';
+            }
+        });
+    }
 });
 
 // PDF Export function
