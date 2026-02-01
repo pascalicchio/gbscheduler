@@ -498,7 +498,7 @@ $extraCss = <<<CSS
         }
 
         .calendar-day.other-month {
-            background: #f8f9fa;
+            background: #fff;
         }
 
         .calendar-day.today {
