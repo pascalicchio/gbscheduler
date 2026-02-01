@@ -90,6 +90,11 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name")->fetchA
 
 // Page setup
 $pageTitle = 'Private Classes | GB Scheduler';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+HTML;
+
 $extraCss = <<<CSS
     body { padding: 20px; }
 
@@ -107,6 +112,33 @@ $extraCss = <<<CSS
         font-weight: bold;
         color: var(--success);
         border-color: var(--success) !important;
+    }
+
+    /* Flatpickr preset buttons */
+    .flatpickr-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px;
+        border-top: 1px solid #e6e6e6;
+        background: #f5f5f5;
+    }
+
+    .flatpickr-presets button {
+        flex: 1;
+        min-width: 70px;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75em;
+        transition: all 0.2s;
+    }
+
+    .flatpickr-presets button:hover {
+        background: #e9ecef;
+        border-color: #007bff;
     }
 CSS;
 
@@ -146,7 +178,7 @@ require_once 'includes/header.php';
             <input type="text" name="student_name" required placeholder="e.g. John Doe OR Cleaning">
 
             <label>Date</label>
-            <input type="date" name="date" value="<?= date('Y-m-d') ?>" required>
+            <input type="text" name="date" id="entry_date" value="<?= date('Y-m-d') ?>" required readonly>
 
             <label>Time (Optional)</label>
             <input type="time" name="time">
@@ -162,8 +194,8 @@ require_once 'includes/header.php';
 
     <div class="data-card">
         <form method="GET" class="filter-bar">
-            <input type="date" name="start_date" value="<?= $start_date ?>">
-            <input type="date" name="end_date" value="<?= $end_date ?>">
+            <input type="text" name="start_date" id="filter_start" value="<?= $start_date ?>" readonly>
+            <input type="text" name="end_date" id="filter_end" value="<?= $end_date ?>" readonly>
 
             <select name="location_id">
                 <option value="">All Locations</option>
@@ -318,7 +350,114 @@ echo "<script>
         document.getElementById('cancel-btn').classList.add('hidden');
 
         document.querySelector('input[name=\"date\"]').value = '" . date('Y-m-d') . "';
+        if (typeof entryPicker !== 'undefined') entryPicker.setDate('" . date('Y-m-d') . "');
     }
+
+    // Flatpickr initialization
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function getPresetDates(preset) {
+        const today = new Date();
+        let start, end;
+
+        switch(preset) {
+            case 'this-month':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'last-month':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'this-week':
+                const dayOfWeek = today.getDay();
+                start = new Date(today);
+                start.setDate(today.getDate() - dayOfWeek);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+            case 'last-week':
+                const lastWeekDay = today.getDay();
+                start = new Date(today);
+                start.setDate(today.getDate() - lastWeekDay - 7);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+        }
+        return { start, end };
+    }
+
+    function createPresetButtons(fp, startPicker, endPicker) {
+        const presetContainer = document.createElement('div');
+        presetContainer.className = 'flatpickr-presets';
+
+        const presets = [
+            { label: 'This Month', value: 'this-month' },
+            { label: 'Last Month', value: 'last-month' },
+            { label: 'This Week', value: 'this-week' },
+            { label: 'Last Week', value: 'last-week' }
+        ];
+
+        presets.forEach(preset => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = preset.label;
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const dates = getPresetDates(preset.value);
+                startPicker.setDate(dates.start, true);
+                endPicker.setDate(dates.end, true);
+                fp.close();
+            });
+            presetContainer.appendChild(btn);
+        });
+
+        return presetContainer;
+    }
+
+    // Entry date picker (no presets, just calendar with Sunday first)
+    const entryPicker = flatpickr('#entry_date', {
+        dateFormat: 'Y-m-d',
+        locale: { firstDayOfWeek: 0 }
+    });
+
+    // Filter date pickers with presets
+    let filterStartPicker, filterEndPicker;
+
+    const filterFpConfig = {
+        dateFormat: 'Y-m-d',
+        locale: { firstDayOfWeek: 0 }
+    };
+
+    filterStartPicker = flatpickr('#filter_start', {
+        ...filterFpConfig,
+        onReady: function(selectedDates, dateStr, instance) {
+            instance.calendarContainer.appendChild(createPresetButtons(instance, filterStartPicker, filterEndPicker));
+        },
+        onChange: function(selectedDates) {
+            if (selectedDates[0] && filterEndPicker) {
+                filterEndPicker.set('minDate', selectedDates[0]);
+            }
+        }
+    });
+
+    filterEndPicker = flatpickr('#filter_end', {
+        ...filterFpConfig,
+        onReady: function(selectedDates, dateStr, instance) {
+            instance.calendarContainer.appendChild(createPresetButtons(instance, filterStartPicker, filterEndPicker));
+        },
+        onChange: function(selectedDates) {
+            if (selectedDates[0] && filterStartPicker) {
+                filterStartPicker.set('maxDate', selectedDates[0]);
+            }
+        }
+    });
 </script>";
 
 require_once 'includes/footer.php';

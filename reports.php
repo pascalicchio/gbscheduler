@@ -102,6 +102,11 @@ $all_coaches = $is_admin ? $pdo->query("SELECT id, name FROM users WHERE role !=
 
 // Page setup
 $pageTitle = 'Payroll Report: ' . e($coach['name']) . ' | GB Scheduler';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+HTML;
+
 $extraCss = <<<CSS
         :root {
             --primary: #007bff;
@@ -182,34 +187,31 @@ $extraCss = <<<CSS
             box-sizing: border-box;
         }
 
-        .date-presets {
+        /* Flatpickr preset buttons */
+        .flatpickr-presets {
             display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
             flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px;
+            border-top: 1px solid #e6e6e6;
+            background: #f5f5f5;
         }
 
-        .date-presets button {
-            padding: 6px 12px;
+        .flatpickr-presets button {
+            flex: 1;
+            min-width: 70px;
+            padding: 6px 8px;
             border: 1px solid #ddd;
-            background: #f8f9fa;
+            background: white;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.75em;
             transition: all 0.2s;
         }
 
-        .date-presets button:hover {
+        .flatpickr-presets button:hover {
             background: #e9ecef;
-            border-color: #adb5bd;
-        }
-
-        .date-presets button.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+            border-color: #007bff;
         }
 
         /* Mobile Responsive */
@@ -245,10 +247,6 @@ $extraCss = <<<CSS
             .btn-filter {
                 width: 100%;
                 margin-top: 5px;
-            }
-
-            .date-presets {
-                justify-content: center;
             }
 
             .stats-grid {
@@ -411,21 +409,15 @@ require_once 'includes/header.php';
             <?php endif; ?>
             <div class="form-group">
                 <label>Start Date</label>
-                <input type="date" name="start_date" id="start_date" value="<?= $start_date ?>">
+                <input type="text" name="start_date" id="start_date" value="<?= $start_date ?>" readonly>
             </div>
             <div class="form-group">
                 <label>End Date</label>
-                <input type="date" name="end_date" id="end_date" value="<?= $end_date ?>">
+                <input type="text" name="end_date" id="end_date" value="<?= $end_date ?>" readonly>
             </div>
             <div class="form-group">
                 <button type="submit" class="btn-filter">Generate Report</button>
             </div>
-        </div>
-        <div class="date-presets">
-            <button type="button" onclick="setPreset('this-month')">This Month</button>
-            <button type="button" onclick="setPreset('last-month')">Last Month</button>
-            <button type="button" onclick="setPreset('this-week')">This Week</button>
-            <button type="button" onclick="setPreset('last-week')">Last Week</button>
         </div>
     </form>
 
@@ -504,67 +496,116 @@ require_once 'includes/header.php';
     <?php endforeach; ?>
 
 <script>
-function setPreset(preset) {
+document.addEventListener('DOMContentLoaded', function() {
     const startInput = document.getElementById('start_date');
     const endInput = document.getElementById('end_date');
-    const today = new Date();
-    let start, end;
 
-    // Clear active state from all buttons
-    document.querySelectorAll('.date-presets button').forEach(btn => btn.classList.remove('active'));
-
-    switch(preset) {
-        case 'this-month':
-            start = new Date(today.getFullYear(), today.getMonth(), 1);
-            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            break;
-        case 'last-month':
-            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            end = new Date(today.getFullYear(), today.getMonth(), 0);
-            break;
-        case 'this-week':
-            // Week starts on Sunday
-            const dayOfWeek = today.getDay(); // 0 = Sunday
-            start = new Date(today);
-            start.setDate(today.getDate() - dayOfWeek);
-            end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            break;
-        case 'last-week':
-            const lastWeekDay = today.getDay();
-            start = new Date(today);
-            start.setDate(today.getDate() - lastWeekDay - 7);
-            end = new Date(start);
-            end.setDate(start.getDate() + 6);
-            break;
+    // Helper to format date as YYYY-MM-DD
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
-    startInput.value = formatDate(start);
-    endInput.value = formatDate(end);
+    // Calculate preset dates
+    function getPresetDates(preset) {
+        const today = new Date();
+        let start, end;
 
-    // Mark preset button as active
-    event.target.classList.add('active');
-}
+        switch(preset) {
+            case 'this-month':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'last-month':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'this-week':
+                const dayOfWeek = today.getDay(); // 0 = Sunday
+                start = new Date(today);
+                start.setDate(today.getDate() - dayOfWeek);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+            case 'last-week':
+                const lastWeekDay = today.getDay();
+                start = new Date(today);
+                start.setDate(today.getDate() - lastWeekDay - 7);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+        }
+        return { start, end };
+    }
 
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
+    // Create preset buttons container
+    function createPresetButtons(fp) {
+        const presetContainer = document.createElement('div');
+        presetContainer.className = 'flatpickr-presets';
 
-// Highlight active preset on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const startVal = document.getElementById('start_date').value;
-    const endVal = document.getElementById('end_date').value;
-    const today = new Date();
+        const presets = [
+            { label: 'This Month', value: 'this-month' },
+            { label: 'Last Month', value: 'last-month' },
+            { label: 'This Week', value: 'this-week' },
+            { label: 'Last Week', value: 'last-week' }
+        ];
 
-    // Check if current dates match any preset
-    const thisMonthStart = formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    const thisMonthEnd = formatDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        presets.forEach(preset => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = preset.label;
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const dates = getPresetDates(preset.value);
+                startPicker.setDate(dates.start, true);
+                endPicker.setDate(dates.end, true);
+                fp.close();
+            });
+            presetContainer.appendChild(btn);
+        });
 
-    if (startVal === thisMonthStart && endVal === thisMonthEnd) {
-        document.querySelector('.date-presets button:nth-child(1)').classList.add('active');
+        return presetContainer;
+    }
+
+    // Flatpickr config
+    const fpConfig = {
+        dateFormat: 'Y-m-d',
+        locale: {
+            firstDayOfWeek: 0 // Sunday
+        },
+        onReady: function(selectedDates, dateStr, instance) {
+            instance.calendarContainer.appendChild(createPresetButtons(instance));
+        }
+    };
+
+    // Initialize both pickers
+    const startPicker = flatpickr(startInput, {
+        ...fpConfig,
+        onChange: function(selectedDates) {
+            if (selectedDates[0]) {
+                endPicker.set('minDate', selectedDates[0]);
+            }
+        }
+    });
+
+    const endPicker = flatpickr(endInput, {
+        ...fpConfig,
+        onChange: function(selectedDates) {
+            if (selectedDates[0]) {
+                startPicker.set('maxDate', selectedDates[0]);
+            }
+        }
+    });
+
+    // Set initial constraints
+    if (startInput.value) {
+        endPicker.set('minDate', startInput.value);
+    }
+    if (endInput.value) {
+        startPicker.set('maxDate', endInput.value);
     }
 });
 </script>

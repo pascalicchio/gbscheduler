@@ -122,6 +122,12 @@ foreach ($master_data as $uid => $data) {
 
 // Page setup
 $pageTitle = 'Payroll Report | GB Scheduler';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+HTML;
+
 $extraCss = <<<CSS
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -170,7 +176,7 @@ $extraCss = <<<CSS
             text-transform: uppercase;
         }
 
-        input[type="date"],
+        input[type="text"],
         select {
             padding: 8px;
             border: 1px solid #ddd;
@@ -178,6 +184,34 @@ $extraCss = <<<CSS
             width: 100%;
             box-sizing: border-box;
             height: 35px;
+        }
+
+        /* Flatpickr preset buttons */
+        .flatpickr-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 8px;
+            border-top: 1px solid #e6e6e6;
+            background: #f5f5f5;
+        }
+
+        .flatpickr-presets button {
+            flex: 1;
+            min-width: 70px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+            height: auto;
+        }
+
+        .flatpickr-presets button:hover {
+            background: #e9ecef;
+            border-color: #007bff;
         }
 
         button {
@@ -431,10 +465,32 @@ $extraCss = <<<CSS
             color: #e65100;
         }
 
+        .pdf-only {
+            display: none;
+        }
+
+        .btn-pdf {
+            background: #dc3545;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-pdf:hover {
+            background: #c82333;
+        }
+
+        .btn-pdf:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
         @media print {
 
             .controls,
-            .top-bar {
+            .top-bar,
+            .btn-pdf {
                 display: none !important;
             }
 
@@ -463,11 +519,11 @@ require_once 'includes/header.php';
     <form method="GET" class="controls">
         <div class="form-group">
             <label>Start Date</label>
-            <input type="date" name="start" value="<?= $start_date ?>">
+            <input type="text" name="start" id="start_date" value="<?= $start_date ?>" readonly>
         </div>
         <div class="form-group">
             <label>End Date</label>
-            <input type="date" name="end" value="<?= $end_date ?>">
+            <input type="text" name="end" id="end_date" value="<?= $end_date ?>" readonly>
         </div>
         <div class="form-group">
             <label>Filter by Coach</label>
@@ -489,10 +545,25 @@ require_once 'includes/header.php';
             </div>
         </div>
         <div class="form-group">
-            <label>&nbsp;</label>
             <button type="submit" class="btn-blue">Apply Filters</button>
         </div>
     </form>
+
+    <!-- Global Summary Header (shown in both views) -->
+    <div class="global-summary">
+        <div style="text-align: left;">
+            <h3>Period</h3>
+            <div style="font-size: 1.1em; font-weight: bold;"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></div>
+        </div>
+        <div>
+            <h3>Total Hours</h3>
+            <div class="big-number"><?= number_format($grand_total_hours, 1) ?></div>
+        </div>
+        <div style="text-align: right;">
+            <h3>Total Payroll</h3>
+            <div class="big-number">$<?= number_format($grand_total_pay, 2) ?></div>
+        </div>
+    </div>
 
     <?php if ($view_mode === 'summary'): ?>
         <?php foreach ($locations as $loc):
@@ -556,7 +627,15 @@ require_once 'includes/header.php';
 
     <?php else: ?>
 
-        <div class="global-summary">
+        <div style="margin-bottom: 20px; text-align: right;">
+            <button type="button" class="btn-pdf" onclick="exportPDF()" id="pdf-btn">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </button>
+        </div>
+
+        <div id="pdf-content">
+        <!-- PDF Header (copy of global summary for PDF - hidden on screen) -->
+        <div class="global-summary pdf-only" style="margin-bottom: 25px;">
             <div style="text-align: left;">
                 <h3>Period</h3>
                 <div style="font-size: 1.1em; font-weight: bold;"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></div>
@@ -638,7 +717,157 @@ require_once 'includes/header.php';
                 <?php endforeach; ?>
             </div>
         <?php endforeach; ?>
+        </div><!-- end pdf-content -->
 
     <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startInput = document.getElementById('start_date');
+    const endInput = document.getElementById('end_date');
+
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function getPresetDates(preset) {
+        const today = new Date();
+        let start, end;
+
+        switch(preset) {
+            case 'this-month':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'last-month':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'this-week':
+                const dayOfWeek = today.getDay();
+                start = new Date(today);
+                start.setDate(today.getDate() - dayOfWeek);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+            case 'last-week':
+                const lastWeekDay = today.getDay();
+                start = new Date(today);
+                start.setDate(today.getDate() - lastWeekDay - 7);
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                break;
+        }
+        return { start, end };
+    }
+
+    function createPresetButtons(fp) {
+        const presetContainer = document.createElement('div');
+        presetContainer.className = 'flatpickr-presets';
+
+        const presets = [
+            { label: 'This Month', value: 'this-month' },
+            { label: 'Last Month', value: 'last-month' },
+            { label: 'This Week', value: 'this-week' },
+            { label: 'Last Week', value: 'last-week' }
+        ];
+
+        presets.forEach(preset => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = preset.label;
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const dates = getPresetDates(preset.value);
+                startPicker.setDate(dates.start, true);
+                endPicker.setDate(dates.end, true);
+                fp.close();
+            });
+            presetContainer.appendChild(btn);
+        });
+
+        return presetContainer;
+    }
+
+    const fpConfig = {
+        dateFormat: 'Y-m-d',
+        locale: { firstDayOfWeek: 0 },
+        onReady: function(selectedDates, dateStr, instance) {
+            instance.calendarContainer.appendChild(createPresetButtons(instance));
+        }
+    };
+
+    const startPicker = flatpickr(startInput, {
+        ...fpConfig,
+        onChange: function(selectedDates) {
+            if (selectedDates[0]) {
+                endPicker.set('minDate', selectedDates[0]);
+            }
+        }
+    });
+
+    const endPicker = flatpickr(endInput, {
+        ...fpConfig,
+        onChange: function(selectedDates) {
+            if (selectedDates[0]) {
+                startPicker.set('maxDate', selectedDates[0]);
+            }
+        }
+    });
+
+    if (startInput.value) endPicker.set('minDate', startInput.value);
+    if (endInput.value) startPicker.set('maxDate', endInput.value);
+});
+
+// PDF Export function
+function exportPDF() {
+    const btn = document.getElementById('pdf-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
+
+    const element = document.getElementById('pdf-content');
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+
+    // Show pdf-only elements for export
+    const pdfOnlyElements = document.querySelectorAll('.pdf-only');
+    pdfOnlyElements.forEach(el => el.style.display = 'flex');
+
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `payroll-report-${startDate}-to-${endDate}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            letterRendering: true
+        },
+        jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(function() {
+        // Hide pdf-only elements again
+        pdfOnlyElements.forEach(el => el.style.display = 'none');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }).catch(function(err) {
+        console.error('PDF generation error:', err);
+        pdfOnlyElements.forEach(el => el.style.display = 'none');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        alert('Error generating PDF. Please try again.');
+    });
+}
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

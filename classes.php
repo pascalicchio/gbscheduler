@@ -106,6 +106,11 @@ $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 
 // Page setup
 $pageTitle = 'Manage Classes | GB Scheduler';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+HTML;
+
 $extraCss = <<<CSS
         /* --- PREMIUM DESIGN SYSTEM --- */
         :root {
@@ -505,7 +510,7 @@ $extraCss = <<<CSS
             font-size: 0.9em;
         }
 
-        .modal-box input[type="date"] {
+        .modal-box input[type="text"] {
             width: 100%;
             padding: 10px;
             margin: 15px 0;
@@ -828,7 +833,9 @@ require_once 'includes/header.php';
 
         function confirmDeactivate(form) {
             pendingDeactivateForm = form;
-            document.getElementById('deactivate-date').value = new Date().toISOString().split('T')[0];
+            if (typeof deactivatePicker !== 'undefined') {
+                deactivatePicker.setDate(new Date(), true);
+            }
             document.getElementById('deactivate-modal').classList.add('show');
             return false;
         }
@@ -845,6 +852,13 @@ require_once 'includes/header.php';
                 pendingDeactivateForm.submit();
             }
         }
+
+        // Initialize Flatpickr for deactivation date
+        const deactivatePicker = flatpickr('#deactivate-date', {
+            dateFormat: 'Y-m-d',
+            locale: { firstDayOfWeek: 0 },
+            defaultDate: new Date()
+        });
     </script>
 
     <!-- Deactivation Modal -->
@@ -853,7 +867,7 @@ require_once 'includes/header.php';
             <h3><i class="fas fa-power-off" style="color: var(--danger);"></i> Deactivate Class</h3>
             <p>Choose when this class should stop appearing on the schedule. It will still show for dates before this.</p>
             <label style="font-weight: 600; font-size: 0.9em;">Deactivation Date:</label>
-            <input type="date" id="deactivate-date">
+            <input type="text" id="deactivate-date" readonly>
             <p style="font-size: 0.85em; color: #888; margin-top: 0;">
                 <i class="fas fa-info-circle"></i> Payment history will be preserved. You can reactivate anytime.
             </p>
