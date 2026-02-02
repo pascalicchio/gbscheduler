@@ -140,6 +140,32 @@ $extraCss = <<<CSS
         background: #e9ecef;
         border-color: #007bff;
     }
+
+    /* Zebra striping */
+    table tbody tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    table tbody tr:hover {
+        background-color: #e9ecef;
+    }
+
+    /* Row count display */
+    .row-count {
+        margin-left: auto;
+        padding-left: 16px;
+        font-size: 0.9em;
+        color: #6c757d;
+        white-space: nowrap;
+    }
+
+    .row-count strong {
+        color: #212529;
+    }
+
+    .filter-bar input[type="text"] {
+        max-width: 130px;
+    }
 CSS;
 
 require_once 'includes/header.php';
@@ -212,6 +238,10 @@ require_once 'includes/header.php';
             </select>
 
             <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+
+            <div class="row-count">
+                Showing <strong><?= count($history) ?></strong> <?= count($history) === 1 ? 'entry' : 'entries' ?>
+            </div>
         </form>
 
         <table>
