@@ -778,6 +778,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 <?php if ($is_admin): ?>
                     <a href="classes.php" class="sidebar-link"><i class="fas fa-calendar-alt"></i> Manage Classes</a>
                     <a href="location_reports.php" class="sidebar-link"><i class="fas fa-file-invoice-dollar"></i> Payroll Report</a>
+                    <a href="coach_payments.php" class="sidebar-link"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>

@@ -17,15 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $color = $_POST['color_code'];
     $rate_head = $_POST['rate_head_coach'] ?? 0;
     $rate_helper = $_POST['rate_helper'] ?? 0;
+    $payment_frequency = $_POST['payment_frequency'] ?? 'weekly';
     $location_ids = $_POST['locations'] ?? [];
     $rates = $_POST['rates'] ?? [];
     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
     if ($id) {
         // UPDATE EXISTING USER
-        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, is_active=? WHERE id=?";
+        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, is_active=?, payment_frequency=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active, $id]);
+        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active, $payment_frequency, $id]);
 
         if (!empty($_POST['password'])) {
             $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -34,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // CREATE NEW USER
         $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active]);
+        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active, $payment_frequency]);
         $id = $pdo->lastInsertId();
     }
 
@@ -69,7 +70,8 @@ $user = [
     'id' => '', 'name' => '', 'email' => '',
     'rate_head_coach' => '0.00', 'rate_helper' => '0.00',
     'coach_type' => 'bjj', 'role' => 'user',
-    'color_code' => '#3788d8', 'is_active' => 1
+    'color_code' => '#3788d8', 'is_active' => 1,
+    'payment_frequency' => 'weekly'
 ];
 $assigned_locations = [];
 $private_rates = [];
@@ -226,14 +228,25 @@ require_once 'includes/header.php';
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>System Role</label>
-                <select name="role">
-                    <option value="user" <?= $user['role'] == 'user' ? 'selected' : '' ?>>Coach (Standard)</option>
-                    <option value="manager" <?= $user['role'] == 'manager' ? 'selected' : '' ?>>Manager (No Classes)</option>
-                    <option value="admin" <?= $user['role'] == 'admin' ? 'selected' : '' ?>>Administrator</option>
-                </select>
-                <p class="form-text">Managers can input private classes but do not appear on the schedule.</p>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>System Role</label>
+                    <select name="role">
+                        <option value="user" <?= $user['role'] == 'user' ? 'selected' : '' ?>>Coach (Standard)</option>
+                        <option value="manager" <?= $user['role'] == 'manager' ? 'selected' : '' ?>>Manager (No Classes)</option>
+                        <option value="admin" <?= $user['role'] == 'admin' ? 'selected' : '' ?>>Administrator</option>
+                    </select>
+                    <p class="form-text">Managers can input private classes but do not appear on the schedule.</p>
+                </div>
+                <div class="form-group">
+                    <label>Payment Frequency</label>
+                    <select name="payment_frequency">
+                        <option value="weekly" <?= ($user['payment_frequency'] ?? 'weekly') == 'weekly' ? 'selected' : '' ?>>Weekly</option>
+                        <option value="biweekly" <?= ($user['payment_frequency'] ?? '') == 'biweekly' ? 'selected' : '' ?>>Biweekly</option>
+                        <option value="monthly" <?= ($user['payment_frequency'] ?? '') == 'monthly' ? 'selected' : '' ?>>Monthly (ADP)</option>
+                    </select>
+                    <p class="form-text">How often this coach is paid.</p>
+                </div>
             </div>
 
             <div class="form-group">
