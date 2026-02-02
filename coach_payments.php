@@ -45,6 +45,7 @@ if ($tab === 'weekly') {
 $start_date = $_GET['start'] ?? $default_start;
 $end_date = $_GET['end'] ?? $default_end;
 $filter_coach_id = $_GET['coach_id'] ?? '';
+$filter_location_id = $_GET['location_id'] ?? '';
 
 // Handle payment submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -97,6 +98,9 @@ $coaches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // For history tab, get all users for filter dropdown
 $all_coaches = $pdo->query("SELECT id, name FROM users ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+// Get all locations for filter dropdown
+$locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 // Calculate earnings for each coach (for payment tabs)
 $coach_data = [];
 if ($tab !== 'history') {
@@ -120,8 +124,13 @@ if ($tab !== 'history') {
         JOIN class_templates ct ON ea.template_id = ct.id
         WHERE ea.class_date BETWEEN :start AND :end
     ";
+    $reg_params = ['start' => $start_date, 'end' => $end_date];
+    if ($filter_location_id) {
+        $sql_reg .= " AND ct.location_id = :loc";
+        $reg_params['loc'] = $filter_location_id;
+    }
     $stmt = $pdo->prepare($sql_reg);
-    $stmt->execute(['start' => $start_date, 'end' => $end_date]);
+    $stmt->execute($reg_params);
     $reg_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($reg_rows as $row) {
@@ -147,8 +156,13 @@ if ($tab !== 'history') {
         FROM private_classes pc
         WHERE pc.class_date BETWEEN :start AND :end
     ";
+    $priv_params = ['start' => $start_date, 'end' => $end_date];
+    if ($filter_location_id) {
+        $sql_priv .= " AND pc.location_id = :loc";
+        $priv_params['loc'] = $filter_location_id;
+    }
     $stmt = $pdo->prepare($sql_priv);
-    $stmt->execute(['start' => $start_date, 'end' => $end_date]);
+    $stmt->execute($priv_params);
     $priv_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($priv_rows as $row) {
@@ -551,6 +565,15 @@ require_once 'includes/header.php';
         <input type="text" name="end" id="end_date" value="<?= $end_date ?>" readonly>
     </div>
     <div class="form-group">
+        <label>Location</label>
+        <select name="location_id">
+            <option value="">All Locations</option>
+            <?php foreach ($locations as $l): ?>
+                <option value="<?= $l['id'] ?>" <?= $filter_location_id == $l['id'] ? 'selected' : '' ?>><?= e($l['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="form-group">
         <label>Coach</label>
         <select name="coach_id">
             <option value="">All Coaches</option>
@@ -559,7 +582,7 @@ require_once 'includes/header.php';
             <?php endforeach; ?>
         </select>
     </div>
-    <button type="submit" class="btn btn-primary" style="margin-top: 9px;">Apply</button>
+    <button type="submit" class="btn btn-primary" style="margin-top: -7px;">Apply</button>
 </form>
 
 <?php if ($tab !== 'history'): ?>
