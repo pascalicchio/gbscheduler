@@ -227,6 +227,7 @@ if ($tab !== 'history') {
         FROM event_assignments ea
         JOIN class_templates ct ON ea.template_id = ct.id
         WHERE ea.class_date BETWEEN :start AND :end
+        AND DAYNAME(ea.class_date) = ct.day_of_week
     ";
     $reg_params = ['start' => $start_date, 'end' => $end_date];
     if ($filter_location_id) {
