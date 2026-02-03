@@ -66,7 +66,7 @@ $coach_rates = []; // For JS payroll calculation
 if ($is_admin) {
     $coach_sql = "SELECT u.id, u.name, u.color_code, u.rate_head_coach, u.rate_helper
                   FROM users u
-                  WHERE u.role != 'manager'
+                  WHERE u.role NOT IN ('manager', 'employee')
                   AND u.is_active = 1 ";
     $coach_params = [];
 

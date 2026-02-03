@@ -123,18 +123,20 @@ if ($tab !== 'history') {
     $frequency_filter = $tab;
 }
 
-// Fetch all users
+// Fetch users (filtered by location and/or frequency)
 $coaches_sql = "SELECT * FROM users WHERE 1=1";
+$coaches_params = [];
 if ($frequency_filter) {
     $coaches_sql .= " AND payment_frequency = :freq";
+    $coaches_params['freq'] = $frequency_filter;
+}
+if ($filter_location_id) {
+    $coaches_sql .= " AND id IN (SELECT user_id FROM user_locations WHERE location_id = :loc)";
+    $coaches_params['loc'] = $filter_location_id;
 }
 $coaches_sql .= " ORDER BY name ASC";
 $stmt = $pdo->prepare($coaches_sql);
-if ($frequency_filter) {
-    $stmt->execute(['freq' => $frequency_filter]);
-} else {
-    $stmt->execute();
-}
+$stmt->execute($coaches_params);
 $coaches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // For history tab, get all users for filter dropdown
@@ -390,14 +392,15 @@ if ($tab === 'history') {
     $payment_history = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Calculate totals
+// Calculate totals (only for coaches in the current filtered view)
 $total_owed = 0;
 $total_paid = 0;
-foreach ($coach_data as $cd) {
+foreach ($coach_data as $uid => $cd) {
     $total_owed += $cd['total_pay'];
-}
-foreach ($paid_records ?? [] as $pr) {
-    $total_paid += $pr['amount'];
+    // Only count payments for coaches in the filtered list
+    if (isset($paid_records[$uid])) {
+        $total_paid += $paid_records[$uid]['amount'];
+    }
 }
 
 // Page setup
@@ -873,7 +876,7 @@ require_once 'includes/header.php';
                             <?php else: ?>
                                 -
                             <?php endif; ?>
-                            <button type="button" onclick="openDeductionModal(<?= $uid ?>, <?= json_encode($data['info']['name']) ?>, <?= $data['deduction'] ?>, <?= json_encode($data['deduction_reason']) ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit deduction">
+                            <button type="button" onclick="openDeductionModal(<?= $uid ?>, <?= htmlspecialchars(json_encode($data['info']['name']), ENT_QUOTES) ?>, <?= $data['deduction'] ?>, <?= htmlspecialchars(json_encode($data['deduction_reason']), ENT_QUOTES) ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit deduction">
                                 <i class="fas fa-minus-circle"></i>
                             </button>
                         </td>

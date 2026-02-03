@@ -17,8 +17,8 @@ if (isset($_GET['delete']) && isAdmin()) {
 // Fetch All Locations
 $locations = $pdo->query("SELECT * FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch Management
-$management = $pdo->query("SELECT * FROM users WHERE role IN ('admin', 'manager') ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Fetch Management & Employees
+$management = $pdo->query("SELECT * FROM users WHERE role IN ('admin', 'manager', 'employee') ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Page setup
 $pageTitle = 'Manage Users | GB Scheduler';
@@ -56,6 +56,7 @@ $extraCss = <<<CSS
 
     .role-admin { background: #343a40; color: white; }
     .role-manager { background: #17a2b8; color: white; }
+    .role-employee { background: #6f42c1; color: white; }
     .type-bjj { background: #e3f2fd; color: #0d47a1; }
     .type-mt { background: #ffebee; color: #b71c1c; }
     .type-both { background: #f3e5f5; color: #4a148c; }
