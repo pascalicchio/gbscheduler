@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $color = $_POST['color_code'];
     $rate_head = $_POST['rate_head_coach'] ?? 0;
     $rate_helper = $_POST['rate_helper'] ?? 0;
+    $fixed_salary = $_POST['fixed_salary'] ?? 0;
+    $commission_per_lead = $_POST['commission_per_lead'] ?? 0;
     $payment_frequency = $_POST['payment_frequency'] ?? 'weekly';
     $location_ids = $_POST['locations'] ?? [];
     $rates = $_POST['rates'] ?? [];
@@ -24,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id) {
         // UPDATE EXISTING USER
-        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, is_active=?, payment_frequency=? WHERE id=?";
+        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, fixed_salary=?, commission_per_lead=?, is_active=?, payment_frequency=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active, $payment_frequency, $id]);
+        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $commission_per_lead, $is_active, $payment_frequency, $id]);
 
         if (!empty($_POST['password'])) {
             $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -35,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // CREATE NEW USER
         $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, fixed_salary, commission_per_lead, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $is_active, $payment_frequency]);
+        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $commission_per_lead, $is_active, $payment_frequency]);
         $id = $pdo->lastInsertId();
     }
 
@@ -69,6 +71,7 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fe
 $user = [
     'id' => '', 'name' => '', 'email' => '',
     'rate_head_coach' => '0.00', 'rate_helper' => '0.00',
+    'fixed_salary' => '0.00', 'commission_per_lead' => '0.00',
     'coach_type' => 'bjj', 'role' => 'user',
     'color_code' => '#3788d8', 'is_active' => 1,
     'payment_frequency' => 'weekly'
@@ -291,6 +294,20 @@ require_once 'includes/header.php';
                 <div class="form-group">
                     <label>Standard Class Helper Rate ($)</label>
                     <input type="number" step="0.01" name="rate_helper" value="<?= $user['rate_helper'] ?>">
+                </div>
+            </div>
+
+            <h4 class="mb-1 mt-2" style="border-bottom:1px solid #eee; padding-bottom:8px;">Fixed Salary & Commission</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fixed Monthly Salary ($)</label>
+                    <input type="number" step="0.01" name="fixed_salary" value="<?= $user['fixed_salary'] ?? '0.00' ?>">
+                    <p class="form-text">For managers/employees with fixed monthly salary.</p>
+                </div>
+                <div class="form-group">
+                    <label>Commission Per Lead/Conversion ($)</label>
+                    <input type="number" step="0.01" name="commission_per_lead" value="<?= $user['commission_per_lead'] ?? '0.00' ?>">
+                    <p class="form-text">Amount paid per conversion/lead.</p>
                 </div>
             </div>
 

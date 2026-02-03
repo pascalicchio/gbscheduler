@@ -70,6 +70,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash("Payment deleted.", 'error');
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'update_conversions') {
+        $user_id = $_POST['user_id'];
+        $period_month = $_POST['period_month'];
+        $conversions = $_POST['conversions'] ?? 0;
+        $notes = $_POST['notes'] ?? '';
+
+        // Upsert conversions
+        $check = $pdo->prepare("SELECT id FROM user_conversions WHERE user_id = ? AND period_month = ?");
+        $check->execute([$user_id, $period_month]);
+
+        if ($check->fetch()) {
+            $stmt = $pdo->prepare("UPDATE user_conversions SET conversions = ?, notes = ?, created_by = ? WHERE user_id = ? AND period_month = ?");
+            $stmt->execute([$conversions, $notes, getUserId(), $user_id, $period_month]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO user_conversions (user_id, period_month, conversions, notes, created_by) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $period_month, $conversions, $notes, getUserId()]);
+        }
+
+        setFlash("Conversions updated successfully!", 'success');
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
     }
 }
 
@@ -101,6 +122,61 @@ $all_coaches = $pdo->query("SELECT id, name FROM users ORDER BY name ASC")->fetc
 // Get all locations for filter dropdown
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
+// Get counts of unpaid users for badge counters on tabs
+// Calculate default periods for each frequency
+$today_calc = new DateTime();
+
+// Weekly period
+$day_of_week_calc = (int)$today_calc->format('w');
+$week_start_calc = (clone $today_calc)->modify("-{$day_of_week_calc} days")->format('Y-m-d');
+$week_end_calc = (clone $today_calc)->modify("-{$day_of_week_calc} days")->modify('+6 days')->format('Y-m-d');
+
+// Biweekly period
+$reference_calc = new DateTime('2024-01-07');
+$diff_calc = $today_calc->diff($reference_calc)->days;
+$weeks_since_calc = floor($diff_calc / 14) * 14;
+$biweekly_start_calc = (clone $reference_calc)->modify("+{$weeks_since_calc} days");
+if ($biweekly_start_calc > $today_calc) {
+    $biweekly_start_calc->modify('-14 days');
+}
+$biweekly_start_date = $biweekly_start_calc->format('Y-m-d');
+$biweekly_end_date = (clone $biweekly_start_calc)->modify('+13 days')->format('Y-m-d');
+
+// Monthly period
+$monthly_start_date = $today_calc->format('Y-m-01');
+$monthly_end_date = $today_calc->format('Y-m-t');
+
+$unpaid_counts = [
+    'weekly' => 0,
+    'biweekly' => 0,
+    'monthly' => 0
+];
+
+// Count unpaid users for each frequency
+foreach ([
+    'weekly' => [$week_start_calc, $week_end_calc],
+    'biweekly' => [$biweekly_start_date, $biweekly_end_date],
+    'monthly' => [$monthly_start_date, $monthly_end_date]
+] as $freq => $dates) {
+    list($period_start, $period_end) = $dates;
+
+    // Get all users with this frequency
+    $freq_users = $pdo->prepare("SELECT id FROM users WHERE payment_frequency = ?");
+    $freq_users->execute([$freq]);
+    $users_with_freq = $freq_users->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($users_with_freq as $user_id) {
+        // Check if they have been paid for this period
+        $paid_check = $pdo->prepare("SELECT id FROM coach_payments WHERE user_id = ? AND period_start = ? AND period_end = ?");
+        $paid_check->execute([$user_id, $period_start, $period_end]);
+
+        // If not paid, increment counter
+        if (!$paid_check->fetch()) {
+            $unpaid_counts[$freq]++;
+        }
+    }
+}
+
 // Calculate earnings for each coach (for payment tabs)
 $coach_data = [];
 if ($tab !== 'history') {
@@ -111,6 +187,9 @@ if ($tab !== 'history') {
             'info' => $c,
             'regular_pay' => 0,
             'private_pay' => 0,
+            'fixed_salary' => 0,
+            'commission_pay' => 0,
+            'conversions' => 0,
             'total_pay' => 0,
             'class_count' => 0
         ];
@@ -172,6 +251,38 @@ if ($tab !== 'history') {
         $coach_data[$uid]['private_pay'] += $row['payout'];
         $coach_data[$uid]['total_pay'] += $row['payout'];
         $coach_data[$uid]['class_count']++;
+    }
+
+    // Fixed Salary & Commission (for monthly payments)
+    // Get the month from the start_date for monthly salary and commission lookup
+    $period_month = date('Y-m-01', strtotime($start_date));
+
+    // Add fixed salary for users who have it
+    foreach ($coach_data as $uid => $data) {
+        $fixed_salary = $coach_data[$uid]['info']['fixed_salary'] ?? 0;
+        if ($fixed_salary > 0) {
+            $coach_data[$uid]['fixed_salary'] = $fixed_salary;
+            $coach_data[$uid]['total_pay'] += $fixed_salary;
+        }
+    }
+
+    // Add commission from conversions
+    $conv_sql = "SELECT user_id, conversions FROM user_conversions WHERE period_month = ?";
+    $stmt = $pdo->prepare($conv_sql);
+    $stmt->execute([$period_month]);
+    $conv_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($conv_rows as $row) {
+        $uid = $row['user_id'];
+        if (!isset($coach_data[$uid])) continue;
+
+        $commission_rate = $coach_data[$uid]['info']['commission_per_lead'] ?? 0;
+        $conversions = $row['conversions'];
+        $commission = $conversions * $commission_rate;
+
+        $coach_data[$uid]['conversions'] = $conversions;
+        $coach_data[$uid]['commission_pay'] = $commission;
+        $coach_data[$uid]['total_pay'] += $commission;
     }
 
     // Check which coaches have been paid for this period
@@ -260,6 +371,24 @@ $extraCss = <<<CSS
         color: white;
         background: var(--primary);
         box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+    }
+
+    .tab-btn {
+        position: relative;
+    }
+
+    .tab-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: #dc3545;
+        color: white;
+        font-size: 0.7em;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        min-width: 20px;
+        text-align: center;
     }
 
     .controls {
@@ -354,13 +483,15 @@ $extraCss = <<<CSS
     }
 
     /* Column widths */
-    .payment-table th:nth-child(1) { width: 20%; }
-    .payment-table th:nth-child(2) { width: 8%; }
-    .payment-table th:nth-child(3) { width: 14%; }
-    .payment-table th:nth-child(4) { width: 14%; }
-    .payment-table th:nth-child(5) { width: 14%; }
-    .payment-table th:nth-child(6) { width: 15%; }
-    .payment-table th:nth-child(7) { width: 15%; }
+    .payment-table th:nth-child(1) { width: 16%; }
+    .payment-table th:nth-child(2) { width: 6%; }
+    .payment-table th:nth-child(3) { width: 10%; }
+    .payment-table th:nth-child(4) { width: 10%; }
+    .payment-table th:nth-child(5) { width: 10%; }
+    .payment-table th:nth-child(6) { width: 13%; }
+    .payment-table th:nth-child(7) { width: 11%; }
+    .payment-table th:nth-child(8) { width: 12%; }
+    .payment-table th:nth-child(9) { width: 12%; }
 
     .payment-table tbody tr:nth-child(even) {
         background-color: #f8f9fa;
@@ -540,12 +671,21 @@ require_once 'includes/header.php';
 <div class="tabs">
     <a href="?tab=weekly" class="tab-btn <?= $tab === 'weekly' ? 'active' : '' ?>">
         <i class="fas fa-calendar-week"></i> Weekly
+        <?php if ($unpaid_counts['weekly'] > 0): ?>
+            <span class="tab-badge"><?= $unpaid_counts['weekly'] ?></span>
+        <?php endif; ?>
     </a>
     <a href="?tab=biweekly" class="tab-btn <?= $tab === 'biweekly' ? 'active' : '' ?>">
         <i class="fas fa-calendar-alt"></i> Biweekly
+        <?php if ($unpaid_counts['biweekly'] > 0): ?>
+            <span class="tab-badge"><?= $unpaid_counts['biweekly'] ?></span>
+        <?php endif; ?>
     </a>
     <a href="?tab=monthly" class="tab-btn <?= $tab === 'monthly' ? 'active' : '' ?>">
         <i class="fas fa-calendar"></i> Monthly
+        <?php if ($unpaid_counts['monthly'] > 0): ?>
+            <span class="tab-badge"><?= $unpaid_counts['monthly'] ?></span>
+        <?php endif; ?>
     </a>
     <a href="?tab=history" class="tab-btn <?= $tab === 'history' ? 'active' : '' ?>">
         <i class="fas fa-history"></i> History
@@ -621,8 +761,10 @@ require_once 'includes/header.php';
                 <tr>
                     <th>Coach</th>
                     <th>Classes</th>
-                    <th>Regular Pay</th>
-                    <th>Private Pay</th>
+                    <th>Regular</th>
+                    <th>Private</th>
+                    <th>Salary</th>
+                    <th>Commission</th>
                     <th>Total Owed</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -633,12 +775,24 @@ require_once 'includes/header.php';
                     if ($data['total_pay'] == 0 && !isset($paid_records[$uid])) continue;
                     $is_paid = isset($paid_records[$uid]);
                     $payment = $paid_records[$uid] ?? null;
+                    $has_commission = ($data['info']['commission_per_lead'] ?? 0) > 0;
                 ?>
                     <tr>
                         <td class="font-bold"><?= e($data['info']['name']) ?></td>
                         <td><?= $data['class_count'] ?></td>
                         <td>$<?= number_format($data['regular_pay'], 2) ?></td>
                         <td>$<?= number_format($data['private_pay'], 2) ?></td>
+                        <td><?= $data['fixed_salary'] > 0 ? '$' . number_format($data['fixed_salary'], 2) : '-' ?></td>
+                        <td>
+                            <?php if ($has_commission): ?>
+                                $<?= number_format($data['commission_pay'], 2) ?>
+                                <button type="button" onclick="openConversionModal(<?= $uid ?>, '<?= e($data['info']['name']) ?>', <?= $data['conversions'] ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit conversions">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                        </td>
                         <td class="font-bold text-success">$<?= number_format($data['total_pay'], 2) ?></td>
                         <td>
                             <?php if ($is_paid): ?>
@@ -772,6 +926,44 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- Conversion Modal -->
+<div class="modal-overlay" id="conversionModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-users"></i> Manage Conversions</h3>
+            <button class="modal-close" onclick="closeConversionModal()">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_conversions">
+            <input type="hidden" name="user_id" id="conv_user_id">
+            <input type="hidden" name="period_month" id="conv_period_month">
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Coach</label>
+                    <input type="text" id="conv_coach_name" readonly style="background:#f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Month</label>
+                    <input type="text" id="conv_period_display" readonly style="background:#f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Number of Conversions/Leads</label>
+                    <input type="number" name="conversions" id="conv_conversions" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Notes (Optional)</label>
+                    <textarea name="notes" rows="2" placeholder="Any additional notes about conversions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeConversionModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Save Conversions</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function openPayModal(userId, coachName, amount) {
     document.getElementById('modal_user_id').value = userId;
@@ -784,9 +976,31 @@ function closePayModal() {
     document.getElementById('payModal').classList.remove('active');
 }
 
-// Close modal on overlay click
+function openConversionModal(userId, coachName, conversions, periodMonth) {
+    document.getElementById('conv_user_id').value = userId;
+    document.getElementById('conv_coach_name').value = coachName;
+    document.getElementById('conv_conversions').value = conversions;
+    document.getElementById('conv_period_month').value = periodMonth;
+
+    // Format the period month for display
+    const date = new Date(periodMonth);
+    const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    document.getElementById('conv_period_display').value = monthName;
+
+    document.getElementById('conversionModal').classList.add('active');
+}
+
+function closeConversionModal() {
+    document.getElementById('conversionModal').classList.remove('active');
+}
+
+// Close modals on overlay click
 document.getElementById('payModal').addEventListener('click', function(e) {
     if (e.target === this) closePayModal();
+});
+
+document.getElementById('conversionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeConversionModal();
 });
 
 // Flatpickr initialization
