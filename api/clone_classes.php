@@ -74,6 +74,7 @@ try {
         FROM event_assignments ea
         $filterJoin
         WHERE ea.class_date BETWEEN :sStart AND :sEnd
+        AND DAYNAME(ea.class_date) = ct.day_of_week
         $filterWhere
         AND NOT EXISTS (
             SELECT 1 FROM event_assignments ea2

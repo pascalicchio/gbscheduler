@@ -38,6 +38,7 @@ $sql_reg = "
     JOIN class_templates ct ON ea.template_id = ct.id
     JOIN locations l ON ct.location_id = l.id
     WHERE ea.class_date BETWEEN :start AND :end
+    AND DAYNAME(ea.class_date) = ct.day_of_week
 ";
 $stmt = $pdo->prepare($sql_reg);
 $stmt->execute(['start' => $start_date, 'end' => $end_date]);
@@ -982,7 +983,7 @@ require_once 'includes/header.php';
                                         <div class="activity-item <?= $act['type'] ?>">
                                             <span class="activity-time"><?= $act['time'] ?></span>
                                             <span class="activity-desc"><?= $act['type'] === 'regular' ? e($act['desc']) : 'Private' ?></span>
-                                            <span class="activity-pay">$<?= number_format($act['pay'], 0) ?></span>
+                                            <span class="activity-pay">$<?= number_format($act['pay'], 2) ?></span>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
