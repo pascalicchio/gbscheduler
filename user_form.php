@@ -39,15 +39,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $commission_tiers = !empty($tiers) ? json_encode($tiers) : null;
 
     $payment_frequency = $_POST['payment_frequency'] ?? 'weekly';
+    $payment_method = $_POST['payment_method'] ?? 'adp';
+    $payment_info = trim($_POST['payment_info'] ?? '');
     $location_ids = $_POST['locations'] ?? [];
     $rates = $_POST['rates'] ?? [];
     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
     if ($id) {
         // UPDATE EXISTING USER
-        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, fixed_salary=?, fixed_salary_location_id=?, commission_tiers=?, is_active=?, payment_frequency=? WHERE id=?";
+        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, fixed_salary=?, fixed_salary_location_id=?, commission_tiers=?, is_active=?, payment_frequency=?, payment_method=?, payment_info=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency, $id]);
+        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency, $payment_method, $payment_info ?: null, $id]);
 
         if (!empty($_POST['password'])) {
             $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -56,9 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // CREATE NEW USER
         $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, fixed_salary, fixed_salary_location_id, commission_tiers, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, fixed_salary, fixed_salary_location_id, commission_tiers, is_active, payment_frequency, payment_method, payment_info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency]);
+        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency, $payment_method, $payment_info ?: null]);
         $id = $pdo->lastInsertId();
     }
 
@@ -94,7 +96,9 @@ $user = [
     'commission_tiers' => null,
     'coach_type' => 'bjj', 'role' => 'user',
     'color_code' => '#3788d8', 'is_active' => 1,
-    'payment_frequency' => 'weekly'
+    'payment_frequency' => 'weekly',
+    'payment_method' => 'adp',
+    'payment_info' => ''
 ];
 
 $assigned_locations = [];
@@ -296,6 +300,25 @@ require_once 'includes/header.php';
                         <option value="monthly" <?= ($user['payment_frequency'] ?? '') == 'monthly' ? 'selected' : '' ?>>Monthly (ADP)</option>
                     </select>
                     <p class="form-text">How often this coach is paid.</p>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select name="payment_method">
+                        <?php
+                        $methods = ['adp' => 'ADP', 'zelle' => 'Zelle', 'wire' => 'Wire', 'cash' => 'Cash', 'check' => 'Check', 'paypal' => 'PayPal'];
+                        foreach ($methods as $val => $label):
+                        ?>
+                            <option value="<?= $val ?>" <?= ($user['payment_method'] ?? 'adp') == $val ? 'selected' : '' ?>><?= $label ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Payment Details</label>
+                    <input type="text" name="payment_info" value="<?= e($user['payment_info'] ?? '') ?>" placeholder="e.g. Zelle email, PayPal ID, bank account">
+                    <p class="form-text">Account info for the selected payment method.</p>
                 </div>
             </div>
 

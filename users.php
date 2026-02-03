@@ -40,11 +40,32 @@ $extraCss = <<<CSS
         padding-bottom: 5px;
     }
 
-    .col-name { width: 25%; }
-    .col-meta { width: 15%; }
-    .col-email { width: 25%; }
-    .col-rate { width: 15%; }
+    .col-name { width: 18%; }
+    .col-meta { width: 10%; }
+    .col-email { width: 18%; }
+    .col-rate { width: 10%; }
+    .col-freq { width: 10%; }
+    .col-pay { width: 14%; }
     .col-act { width: 20%; text-align: right; }
+
+    .pay-method {
+        font-size: 0.8em;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .pay-info {
+        font-size: 0.75em;
+        color: #888;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 150px;
+    }
 
     .color-dot {
         display: inline-block;
@@ -107,6 +128,8 @@ require_once 'includes/header.php';
                 <th class="col-meta">Role</th>
                 <th class="col-email">Email</th>
                 <th class="col-rate">Rates (H/A)</th>
+                <th class="col-freq">Frequency</th>
+                <th class="col-pay">Payment</th>
                 <th class="col-act">Actions</th>
             </tr>
         </thead>
@@ -120,6 +143,11 @@ require_once 'includes/header.php';
                     <td><span class="badge role-<?= $u['role'] ?>"><?= ucfirst($u['role']) ?></span></td>
                     <td><?= e($u['email']) ?></td>
                     <td>$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
+                    <td style="font-size:0.85em;"><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
+                    <td>
+                        <span class="pay-method"><?= strtoupper($u['payment_method'] ?? 'ADP') ?></span>
+                        <?php if (!empty($u['payment_info'])): ?><div class="pay-info" title="<?= e($u['payment_info']) ?>"><?= e($u['payment_info']) ?></div><?php endif; ?>
+                    </td>
                     <td class="actions col-act">
                         <a href="location_reports.php?start=<?= date('Y-m-01') ?>&end=<?= date('Y-m-t') ?>&coach_id=<?= $u['id'] ?>&view=detailed"><i class="fas fa-file-invoice-dollar"></i></a>
                         <?php if (isAdmin()): ?>
@@ -149,6 +177,8 @@ require_once 'includes/header.php';
                     <th class="col-meta">Type</th>
                     <th class="col-email">Email</th>
                     <th class="col-rate">Rates (H/A)</th>
+                    <th class="col-freq">Frequency</th>
+                    <th class="col-pay">Payment</th>
                     <th class="col-act">Actions</th>
                 </tr>
             </thead>
@@ -163,6 +193,11 @@ require_once 'includes/header.php';
                         <td><span class="badge type-<?= $u['coach_type'] ?>"><?= strtoupper($u['coach_type']) ?></span></td>
                         <td><?= e($u['email']) ?></td>
                         <td>$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
+                        <td style="font-size:0.85em;"><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
+                        <td>
+                            <span class="pay-method"><?= strtoupper($u['payment_method'] ?? 'ADP') ?></span>
+                            <?php if (!empty($u['payment_info'])): ?><div class="pay-info" title="<?= e($u['payment_info']) ?>"><?= e($u['payment_info']) ?></div><?php endif; ?>
+                        </td>
                         <td class="actions col-act">
                             <a href="location_reports.php?start=<?= date('Y-m-01') ?>&end=<?= date('Y-m-t') ?>&coach_id=<?= $u['id'] ?>&view=detailed"><i class="fas fa-file-invoice-dollar"></i></a>
                             <?php if (isAdmin()): ?>

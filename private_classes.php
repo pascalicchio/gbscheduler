@@ -22,13 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = $_POST['date'];
         $time = $_POST['time'];
         $payout = $_POST['payout'];
+        $notes = trim($_POST['notes'] ?? '');
 
         $check = $pdo->prepare("SELECT id FROM private_classes WHERE user_id=? AND location_id=? AND class_date=? AND student_name=? AND class_time <=> ?");
         $check->execute([$coach_id, $location_id, $date, $student, $time ?: null]);
 
         if (!$check->fetch()) {
-            $stmt = $pdo->prepare("INSERT INTO private_classes (user_id, location_id, student_name, class_date, class_time, payout, created_by) VALUES (?,?,?,?,?,?,?)");
-            if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, getUserId()])) {
+            $stmt = $pdo->prepare("INSERT INTO private_classes (user_id, location_id, student_name, class_date, class_time, payout, notes, created_by) VALUES (?,?,?,?,?,?,?,?)");
+            if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $notes ?: null, getUserId()])) {
                 setFlash("Recorded! Payout set to $$payout", 'success');
             }
         }
@@ -40,9 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $date = $_POST['date'];
         $time = $_POST['time'];
         $payout = $_POST['payout'];
+        $notes = trim($_POST['notes'] ?? '');
 
-        $stmt = $pdo->prepare("UPDATE private_classes SET user_id=?, location_id=?, student_name=?, class_date=?, class_time=?, payout=? WHERE id=?");
-        if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $edit_id])) {
+        $stmt = $pdo->prepare("UPDATE private_classes SET user_id=?, location_id=?, student_name=?, class_date=?, class_time=?, payout=?, notes=? WHERE id=?");
+        if ($stmt->execute([$coach_id, $location_id, $student, $date, $time ?: null, $payout, $notes ?: null, $edit_id])) {
             setFlash("Entry updated successfully!", 'success');
         }
     } elseif (isset($_POST['action']) && $_POST['action'] === 'delete') {
@@ -213,6 +215,9 @@ require_once 'includes/header.php';
             <input type="number" step="0.01" name="payout" id="payout" required placeholder="0.00" class="payout-input">
             <p class="form-text">Auto-filled based on settings. Edit for cleaning/seminars.</p>
 
+            <label>Notes (Optional)</label>
+            <textarea name="notes" id="notes" rows="2" placeholder="e.g. Package of privates paid last month"></textarea>
+
             <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Save Entry</button>
             <button type="button" id="cancel-btn" onclick="cancelEdit()" class="btn btn-secondary btn-block mt-1 hidden">Cancel Edit</button>
         </form>
@@ -251,6 +256,7 @@ require_once 'includes/header.php';
                     <th>Coach</th>
                     <th>Location</th>
                     <th>Activity</th>
+                    <th>Notes</th>
                     <th>Payout</th>
                     <th>Action</th>
                 </tr>
@@ -262,6 +268,7 @@ require_once 'includes/header.php';
                         <td><?= e($r['coach_name']) ?></td>
                         <td><?= e($r['loc_name']) ?></td>
                         <td><?= e($r['student_name']) ?></td>
+                        <td style="text-align:center;"><?php if ($r['notes']): ?><span title="<?= e($r['notes']) ?>" style="cursor:help; font-size:1.1em;"><i class="fas fa-sticky-note" style="color:#ffc107;"></i></span><?php endif; ?></td>
                         <td class="font-bold text-success">$<?= number_format($r['payout'], 2) ?></td>
                         <td class="table-actions">
                             <button type="button" onclick='editEntry(<?= json_encode($r) ?>)' class="btn-icon"><i class="fas fa-edit"></i></button>
@@ -360,6 +367,7 @@ echo "<script>
         document.querySelector('input[name=\"date\"]').value = data.class_date;
         document.querySelector('input[name=\"time\"]').value = data.class_time || '';
         document.getElementById('payout').value = data.payout;
+        document.getElementById('notes').value = data.notes || '';
 
         document.getElementById('form-title').textContent = 'Edit Entry';
         document.getElementById('submit-btn').textContent = 'Update Entry';
@@ -373,6 +381,7 @@ echo "<script>
         document.getElementById('class-form').reset();
         document.getElementById('form-action').value = 'add';
         document.getElementById('edit-id').value = '';
+        document.getElementById('notes').value = '';
 
         document.getElementById('form-title').textContent = 'Record Class';
         document.getElementById('submit-btn').textContent = 'Save Entry';
