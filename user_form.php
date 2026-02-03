@@ -18,7 +18,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rate_head = $_POST['rate_head_coach'] ?? 0;
     $rate_helper = $_POST['rate_helper'] ?? 0;
     $fixed_salary = $_POST['fixed_salary'] ?? 0;
-    $commission_per_lead = $_POST['commission_per_lead'] ?? 0;
+    $fixed_salary_location_id = !empty($_POST['fixed_salary_location_id']) ? $_POST['fixed_salary_location_id'] : null;
+
+    // Process commission tiers
+    $tiers = [];
+    if (isset($_POST['tier_min']) && is_array($_POST['tier_min'])) {
+        foreach ($_POST['tier_min'] as $idx => $min) {
+            $max = $_POST['tier_max'][$idx] ?? '';
+            $rate = $_POST['tier_rate'][$idx] ?? 0;
+
+            if ($min !== '' && $rate > 0) {
+                $tiers[] = [
+                    'min' => (int)$min,
+                    'max' => ($max !== '' && $max !== null) ? (int)$max : null,
+                    'rate' => (float)$rate
+                ];
+            }
+        }
+    }
+    $commission_tiers = !empty($tiers) ? json_encode($tiers) : null;
+
     $payment_frequency = $_POST['payment_frequency'] ?? 'weekly';
     $location_ids = $_POST['locations'] ?? [];
     $rates = $_POST['rates'] ?? [];
@@ -26,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id) {
         // UPDATE EXISTING USER
-        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, fixed_salary=?, commission_per_lead=?, is_active=?, payment_frequency=? WHERE id=?";
+        $sql = "UPDATE users SET name=?, email=?, role=?, coach_type=?, color_code=?, rate_head_coach=?, rate_helper=?, fixed_salary=?, fixed_salary_location_id=?, commission_tiers=?, is_active=?, payment_frequency=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $commission_per_lead, $is_active, $payment_frequency, $id]);
+        $stmt->execute([$name, $email, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency, $id]);
 
         if (!empty($_POST['password'])) {
             $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -37,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // CREATE NEW USER
         $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, fixed_salary, commission_per_lead, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (name, email, password, role, coach_type, color_code, rate_head_coach, rate_helper, fixed_salary, fixed_salary_location_id, commission_tiers, is_active, payment_frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $commission_per_lead, $is_active, $payment_frequency]);
+        $stmt->execute([$name, $email, $pass, $role, $coach_type, $color, $rate_head, $rate_helper, $fixed_salary, $fixed_salary_location_id, $commission_tiers, $is_active, $payment_frequency]);
         $id = $pdo->lastInsertId();
     }
 
@@ -71,13 +90,16 @@ $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fe
 $user = [
     'id' => '', 'name' => '', 'email' => '',
     'rate_head_coach' => '0.00', 'rate_helper' => '0.00',
-    'fixed_salary' => '0.00', 'commission_per_lead' => '0.00',
+    'fixed_salary' => '0.00', 'fixed_salary_location_id' => null,
+    'commission_tiers' => null,
     'coach_type' => 'bjj', 'role' => 'user',
     'color_code' => '#3788d8', 'is_active' => 1,
     'payment_frequency' => 'weekly'
 ];
+
 $assigned_locations = [];
 $private_rates = [];
+$commission_tiers = [];
 $is_edit = false;
 $title = "Add New User";
 
@@ -101,6 +123,11 @@ if (isset($_GET['id'])) {
     $stmt_rates->execute([$user['id']]);
     foreach ($stmt_rates->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $private_rates[$r['location_id']] = $r;
+    }
+
+    // Parse commission tiers
+    if (!empty($user['commission_tiers'])) {
+        $commission_tiers = json_decode($user['commission_tiers'], true) ?: [];
     }
 }
 
@@ -209,6 +236,25 @@ $extraCss = <<<CSS
     }
 
     .active-toggle input { width: auto; margin: 0; }
+
+    .tier-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .tier-row input {
+        margin: 0;
+    }
+
+    .tier-row span {
+        font-weight: 500;
+        color: #666;
+    }
 CSS;
 
 require_once 'includes/header.php';
@@ -237,9 +283,10 @@ require_once 'includes/header.php';
                     <select name="role">
                         <option value="user" <?= $user['role'] == 'user' ? 'selected' : '' ?>>Coach (Standard)</option>
                         <option value="manager" <?= $user['role'] == 'manager' ? 'selected' : '' ?>>Manager (No Classes)</option>
+                        <option value="employee" <?= $user['role'] == 'employee' ? 'selected' : '' ?>>Employee (Salary Only)</option>
                         <option value="admin" <?= $user['role'] == 'admin' ? 'selected' : '' ?>>Administrator</option>
                     </select>
-                    <p class="form-text">Managers can input private classes but do not appear on the schedule.</p>
+                    <p class="form-text">Employees only receive salary/commission - no classes or schedule access.</p>
                 </div>
                 <div class="form-group">
                     <label>Payment Frequency</label>
@@ -298,6 +345,7 @@ require_once 'includes/header.php';
             </div>
 
             <h4 class="mb-1 mt-2" style="border-bottom:1px solid #eee; padding-bottom:8px;">Fixed Salary & Commission</h4>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Fixed Monthly Salary ($)</label>
@@ -305,10 +353,54 @@ require_once 'includes/header.php';
                     <p class="form-text">For managers/employees with fixed monthly salary.</p>
                 </div>
                 <div class="form-group">
-                    <label>Commission Per Lead/Conversion ($)</label>
-                    <input type="number" step="0.01" name="commission_per_lead" value="<?= $user['commission_per_lead'] ?? '0.00' ?>">
-                    <p class="form-text">Amount paid per conversion/lead.</p>
+                    <label>Paid By Location</label>
+                    <select name="fixed_salary_location_id">
+                        <option value="">None</option>
+                        <?php foreach ($locations as $l): ?>
+                            <option value="<?= $l['id'] ?>" <?= ($user['fixed_salary_location_id'] ?? '') == $l['id'] ? 'selected' : '' ?>>
+                                <?= e($l['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="form-text">Which location pays this salary (prevents duplicate in reports).</p>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>Commission Tiers</label>
+                <p class="form-text mb-1">Progressive calculation: each tier is calculated separately and summed.</p>
+
+                <div id="commission-tiers">
+                    <?php if (empty($commission_tiers)): ?>
+                        <div class="tier-row" data-tier="0">
+                            <input type="number" name="tier_min[]" placeholder="From" min="0" style="width: 80px;">
+                            <span> - </span>
+                            <input type="number" name="tier_max[]" placeholder="To (empty for 51+)" min="0" style="width: 120px;">
+                            <span> : $</span>
+                            <input type="number" step="0.01" name="tier_rate[]" placeholder="Rate" min="0" style="width: 100px;">
+                            <button type="button" class="btn-icon" onclick="removeTier(this)" title="Remove tier">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($commission_tiers as $idx => $tier): ?>
+                            <div class="tier-row" data-tier="<?= $idx ?>">
+                                <input type="number" name="tier_min[]" value="<?= $tier['min'] ?>" placeholder="From" min="0" style="width: 80px;">
+                                <span> - </span>
+                                <input type="number" name="tier_max[]" value="<?= $tier['max'] ?? '' ?>" placeholder="To (empty for 51+)" min="0" style="width: 120px;">
+                                <span> : $</span>
+                                <input type="number" step="0.01" name="tier_rate[]" value="<?= $tier['rate'] ?>" placeholder="Rate" min="0" style="width: 100px;">
+                                <button type="button" class="btn-icon" onclick="removeTier(this)" title="Remove tier">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <button type="button" class="btn btn-outline mt-1" onclick="addTier()">
+                    <i class="fas fa-plus"></i> Add Tier
+                </button>
             </div>
 
             <div class="form-row">
@@ -387,6 +479,36 @@ document.addEventListener('DOMContentLoaded', function() {
     checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
     updateSelectAll();
 });
+
+// Commission tier management
+let tierCounter = <?= count($commission_tiers) ?>;
+
+function addTier() {
+    const container = document.getElementById('commission-tiers');
+    const tierRow = document.createElement('div');
+    tierRow.className = 'tier-row';
+    tierRow.dataset.tier = tierCounter++;
+    tierRow.innerHTML = `
+        <input type="number" name="tier_min[]" placeholder="From" min="0" style="width: 80px;">
+        <span> - </span>
+        <input type="number" name="tier_max[]" placeholder="To (empty for 51+)" min="0" style="width: 120px;">
+        <span> : $</span>
+        <input type="number" step="0.01" name="tier_rate[]" placeholder="Rate" min="0" style="width: 100px;">
+        <button type="button" class="btn-icon" onclick="removeTier(this)" title="Remove tier">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(tierRow);
+}
+
+function removeTier(button) {
+    const container = document.getElementById('commission-tiers');
+    if (container.children.length > 1) {
+        button.closest('.tier-row').remove();
+    } else {
+        alert('You must have at least one tier.');
+    }
+}
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

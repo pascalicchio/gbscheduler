@@ -91,6 +91,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash("Conversions updated successfully!", 'success');
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'update_deduction') {
+        $user_id = $_POST['user_id'];
+        $period_month = $_POST['period_month'];
+        $amount = $_POST['amount'] ?? 0;
+        $reason = $_POST['reason'] ?? '';
+
+        // Upsert deduction
+        $check = $pdo->prepare("SELECT id FROM user_deductions WHERE user_id = ? AND period_month = ?");
+        $check->execute([$user_id, $period_month]);
+
+        if ($check->fetch()) {
+            $stmt = $pdo->prepare("UPDATE user_deductions SET amount = ?, reason = ?, created_by = ? WHERE user_id = ? AND period_month = ?");
+            $stmt->execute([$amount, $reason, getUserId(), $user_id, $period_month]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO user_deductions (user_id, period_month, amount, reason, created_by) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $period_month, $amount, $reason, getUserId()]);
+        }
+
+        setFlash("Deduction updated successfully!", 'success');
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
     }
 }
 
@@ -190,6 +211,8 @@ if ($tab !== 'history') {
             'fixed_salary' => 0,
             'commission_pay' => 0,
             'conversions' => 0,
+            'deduction' => 0,
+            'deduction_reason' => '',
             'total_pay' => 0,
             'class_count' => 0
         ];
@@ -257,12 +280,19 @@ if ($tab !== 'history') {
     // Get the month from the start_date for monthly salary and commission lookup
     $period_month = date('Y-m-01', strtotime($start_date));
 
-    // Add fixed salary for users who have it
+    // Add fixed salary for users who have it (only if location matches or no location filter)
     foreach ($coach_data as $uid => $data) {
-        $fixed_salary = $coach_data[$uid]['info']['fixed_salary'] ?? 0;
-        if ($fixed_salary > 0) {
-            $coach_data[$uid]['fixed_salary'] = $fixed_salary;
-            $coach_data[$uid]['total_pay'] += $fixed_salary;
+        $fixed_salary = (float)($coach_data[$uid]['info']['fixed_salary'] ?? 0);
+        $salary_location = $coach_data[$uid]['info']['fixed_salary_location_id'] ?? null;
+
+        if ($fixed_salary > 0 && $salary_location) {
+            // Only include salary if: no location filter, OR location filter matches salary location
+            $location_matches = !$filter_location_id || ((int)$salary_location === (int)$filter_location_id);
+
+            if ($location_matches) {
+                $coach_data[$uid]['fixed_salary'] = $fixed_salary;
+                $coach_data[$uid]['total_pay'] += $fixed_salary;
+            }
         }
     }
 
@@ -276,13 +306,53 @@ if ($tab !== 'history') {
         $uid = $row['user_id'];
         if (!isset($coach_data[$uid])) continue;
 
-        $commission_rate = $coach_data[$uid]['info']['commission_per_lead'] ?? 0;
         $conversions = $row['conversions'];
-        $commission = $conversions * $commission_rate;
+        $commission = 0;
+
+        // Parse commission tiers - find which tier the conversions fall into
+        $tiers_json = $coach_data[$uid]['info']['commission_tiers'] ?? null;
+        if ($tiers_json && $conversions > 0) {
+            $tiers = json_decode($tiers_json, true);
+            if ($tiers && is_array($tiers)) {
+                // Sort tiers by min value (descending to find highest matching tier first)
+                usort($tiers, function($a, $b) {
+                    return $b['min'] - $a['min'];
+                });
+
+                // Find which tier the conversion count falls into
+                foreach ($tiers as $tier) {
+                    $tier_min = $tier['min'];
+                    $tier_max = $tier['max'] ?? 999999;
+                    $tier_rate = $tier['rate'];
+
+                    // If conversions >= tier minimum, use this tier's rate for ALL conversions
+                    if ($conversions >= $tier_min) {
+                        $commission = $conversions * $tier_rate;
+                        break; // Stop at the first (highest) matching tier
+                    }
+                }
+            }
+        }
 
         $coach_data[$uid]['conversions'] = $conversions;
         $coach_data[$uid]['commission_pay'] = $commission;
         $coach_data[$uid]['total_pay'] += $commission;
+    }
+
+    // Apply deductions
+    $ded_sql = "SELECT user_id, amount, reason FROM user_deductions WHERE period_month = ?";
+    $stmt = $pdo->prepare($ded_sql);
+    $stmt->execute([$period_month]);
+    $ded_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($ded_rows as $row) {
+        $uid = $row['user_id'];
+        if (!isset($coach_data[$uid])) continue;
+
+        $deduction = (float)$row['amount'];
+        $coach_data[$uid]['deduction'] = $deduction;
+        $coach_data[$uid]['deduction_reason'] = $row['reason'] ?? '';
+        $coach_data[$uid]['total_pay'] -= $deduction;
     }
 
     // Check which coaches have been paid for this period
@@ -483,15 +553,18 @@ $extraCss = <<<CSS
     }
 
     /* Column widths */
-    .payment-table th:nth-child(1) { width: 16%; }
-    .payment-table th:nth-child(2) { width: 6%; }
-    .payment-table th:nth-child(3) { width: 10%; }
-    .payment-table th:nth-child(4) { width: 10%; }
-    .payment-table th:nth-child(5) { width: 10%; }
-    .payment-table th:nth-child(6) { width: 13%; }
+    .payment-table th:nth-child(1) { width: 14%; }
+    .payment-table th:nth-child(2) { width: 5%; }
+    .payment-table th:nth-child(3) { width: 9%; }
+    .payment-table th:nth-child(4) { width: 9%; }
+    .payment-table th:nth-child(5) { width: 9%; }
+    .payment-table th:nth-child(6) { width: 11%; }
     .payment-table th:nth-child(7) { width: 11%; }
-    .payment-table th:nth-child(8) { width: 12%; }
-    .payment-table th:nth-child(9) { width: 12%; }
+    .payment-table th:nth-child(8) { width: 10%; }
+    .payment-table th:nth-child(9) { width: 10%; }
+    .payment-table th:nth-child(10) { width: 12%; }
+
+    .text-danger { color: #dc3545; }
 
     .payment-table tbody tr:nth-child(even) {
         background-color: #f8f9fa;
@@ -765,6 +838,7 @@ require_once 'includes/header.php';
                     <th>Private</th>
                     <th>Salary</th>
                     <th>Commission</th>
+                    <th>Deduction</th>
                     <th>Total Owed</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -775,7 +849,7 @@ require_once 'includes/header.php';
                     if ($data['total_pay'] == 0 && !isset($paid_records[$uid])) continue;
                     $is_paid = isset($paid_records[$uid]);
                     $payment = $paid_records[$uid] ?? null;
-                    $has_commission = ($data['info']['commission_per_lead'] ?? 0) > 0;
+                    $has_commission = !empty($data['info']['commission_tiers']);
                 ?>
                     <tr>
                         <td class="font-bold"><?= e($data['info']['name']) ?></td>
@@ -792,6 +866,16 @@ require_once 'includes/header.php';
                             <?php else: ?>
                                 -
                             <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($data['deduction'] > 0): ?>
+                                <span class="text-danger">-$<?= number_format($data['deduction'], 2) ?></span>
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                            <button type="button" onclick="openDeductionModal(<?= $uid ?>, <?= json_encode($data['info']['name']) ?>, <?= $data['deduction'] ?>, <?= json_encode($data['deduction_reason']) ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit deduction">
+                                <i class="fas fa-minus-circle"></i>
+                            </button>
                         </td>
                         <td class="font-bold text-success">$<?= number_format($data['total_pay'], 2) ?></td>
                         <td>
@@ -964,6 +1048,44 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- Deduction Modal -->
+<div class="modal-overlay" id="deductionModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-minus-circle"></i> Manage Deduction</h3>
+            <button class="modal-close" onclick="closeDeductionModal()">&times;</button>
+        </div>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_deduction">
+            <input type="hidden" name="user_id" id="ded_user_id">
+            <input type="hidden" name="period_month" id="ded_period_month">
+
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Employee</label>
+                    <input type="text" id="ded_coach_name" readonly style="background:#f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Month</label>
+                    <input type="text" id="ded_period_display" readonly style="background:#f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Deduction Amount ($)</label>
+                    <input type="number" step="0.01" name="amount" id="ded_amount" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Reason</label>
+                    <textarea name="reason" id="ded_reason" rows="2" placeholder="Reason for deduction (e.g., missed days, advance payment, etc.)"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeDeductionModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger">Save Deduction</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function openPayModal(userId, coachName, amount) {
     document.getElementById('modal_user_id').value = userId;
@@ -994,6 +1116,25 @@ function closeConversionModal() {
     document.getElementById('conversionModal').classList.remove('active');
 }
 
+function openDeductionModal(userId, coachName, amount, reason, periodMonth) {
+    document.getElementById('ded_user_id').value = userId;
+    document.getElementById('ded_coach_name').value = coachName;
+    document.getElementById('ded_amount').value = amount > 0 ? amount.toFixed(2) : '0.00';
+    document.getElementById('ded_reason').value = reason;
+    document.getElementById('ded_period_month').value = periodMonth;
+
+    // Format the period month for display
+    const date = new Date(periodMonth);
+    const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    document.getElementById('ded_period_display').value = monthName;
+
+    document.getElementById('deductionModal').classList.add('active');
+}
+
+function closeDeductionModal() {
+    document.getElementById('deductionModal').classList.remove('active');
+}
+
 // Close modals on overlay click
 document.getElementById('payModal').addEventListener('click', function(e) {
     if (e.target === this) closePayModal();
@@ -1001,6 +1142,10 @@ document.getElementById('payModal').addEventListener('click', function(e) {
 
 document.getElementById('conversionModal').addEventListener('click', function(e) {
     if (e.target === this) closeConversionModal();
+});
+
+document.getElementById('deductionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeductionModal();
 });
 
 // Flatpickr initialization
