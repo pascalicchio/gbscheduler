@@ -895,7 +895,12 @@ require_once 'includes/header.php';
                     $has_commission = !empty($data['info']['commission_tiers']);
                 ?>
                     <tr>
-                        <td class="font-bold"><?= e($data['info']['name']) ?></td>
+                        <td class="font-bold">
+                            <button type="button" onclick="openCoachInfoModal(<?= $uid ?>, <?= htmlspecialchars(json_encode($data['info']), ENT_QUOTES) ?>)" class="btn-icon" style="margin-right: 6px;" title="View payment info">
+                                <i class="fas fa-info-circle" style="color: #007bff;"></i>
+                            </button>
+                            <?= e($data['info']['name']) ?>
+                        </td>
                         <td><?= $data['class_count'] ?></td>
                         <td>$<?= number_format($data['regular_pay'], 2) ?></td>
                         <td>$<?= number_format($data['private_pay'], 2) ?></td>
@@ -1141,6 +1146,46 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- Coach Info Modal -->
+<div class="modal-overlay" id="coachInfoModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-circle"></i> Coach Payment Information</h3>
+            <button class="modal-close" onclick="closeCoachInfoModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="info_coach_name" readonly style="background:#f8f9fa;">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="text" id="info_coach_email" readonly style="background:#f8f9fa;">
+            </div>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <input type="text" id="info_payment_method" readonly style="background:#f8f9fa;">
+            </div>
+            <div class="form-group">
+                <label>Payment Information (Zelle, Bank, etc.)</label>
+                <textarea id="info_payment_info" readonly style="background:#f8f9fa; min-height: 80px;" placeholder="No payment information on file"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Payment Frequency</label>
+                <input type="text" id="info_payment_frequency" readonly style="background:#f8f9fa;">
+            </div>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                <a id="info_coach_report_link" href="#" target="_blank" class="btn btn-primary" style="display: inline-block; text-decoration: none;">
+                    <i class="fas fa-file-invoice-dollar"></i> View Detailed Report
+                </a>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeCoachInfoModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
 function openPayModal(userId, coachName, amount) {
     document.getElementById('modal_user_id').value = userId;
@@ -1190,6 +1235,27 @@ function closeDeductionModal() {
     document.getElementById('deductionModal').classList.remove('active');
 }
 
+function openCoachInfoModal(userId, coachInfo) {
+    document.getElementById('info_coach_name').value = coachInfo.name;
+    document.getElementById('info_coach_email').value = coachInfo.email;
+    document.getElementById('info_payment_method').value = coachInfo.payment_method || 'N/A';
+    document.getElementById('info_payment_info').value = coachInfo.payment_info || '';
+    
+    // Format payment frequency
+    const frequency = coachInfo.payment_frequency || 'weekly';
+    document.getElementById('info_payment_frequency').value = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+    
+    // Set report link
+    const reportLink = 'reports.php?user_id=' + userId;
+    document.getElementById('info_coach_report_link').href = reportLink;
+    
+    document.getElementById('coachInfoModal').classList.add('active');
+}
+
+function closeCoachInfoModal() {
+    document.getElementById('coachInfoModal').classList.remove('active');
+}
+
 // Close modals on overlay click
 document.getElementById('payModal').addEventListener('click', function(e) {
     if (e.target === this) closePayModal();
@@ -1201,6 +1267,10 @@ document.getElementById('conversionModal').addEventListener('click', function(e)
 
 document.getElementById('deductionModal').addEventListener('click', function(e) {
     if (e.target === this) closeDeductionModal();
+});
+
+document.getElementById('coachInfoModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCoachInfoModal();
 });
 
 // Flatpickr initialization
