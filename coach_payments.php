@@ -1245,8 +1245,8 @@ function openCoachInfoModal(userId, coachInfo) {
     const frequency = coachInfo.payment_frequency || 'weekly';
     document.getElementById('info_payment_frequency').value = frequency.charAt(0).toUpperCase() + frequency.slice(1);
     
-    // Set report link
-    const reportLink = 'reports.php?user_id=' + userId;
+    // Set report link (use coach_id parameter)
+    const reportLink = 'reports.php?coach_id=' + userId;
     document.getElementById('info_coach_report_link').href = reportLink;
     
     document.getElementById('coachInfoModal').classList.add('active');
