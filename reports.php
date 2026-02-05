@@ -1051,7 +1051,7 @@ require_once 'includes/header.php';
                                     <?php foreach ($acts as $act): ?>
                                         <div class="activity-item <?= $act['type'] ?>">
                                             <span class="activity-time"><?= $act['time'] ?></span>
-                                            <span class="activity-desc"><?= $act['type'] === 'regular' ? e($act['desc']) : 'Private' ?></span>
+                                            <span class="activity-desc"><?= e($act['desc']) ?></span>
                                             <span class="activity-pay">$<?= number_format($act['pay'], 2) ?></span>
                                         </div>
                                     <?php endforeach; ?>
