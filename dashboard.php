@@ -774,6 +774,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 <h4 style="color:#aaa; text-transform:uppercase; font-size:0.8em; letter-spacing:1px;">Management</h4>
                 <a href="users.php" class="sidebar-link"><i class="fas fa-users"></i> Manage Users</a>
                 <a href="private_classes.php" class="sidebar-link"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                <a href="inventory.php" class="sidebar-link"><i class="fas fa-boxes"></i> Inventory</a>
 
                 <?php if ($is_admin): ?>
                     <a href="classes.php" class="sidebar-link"><i class="fas fa-calendar-alt"></i> Manage Classes</a>
