@@ -161,7 +161,7 @@ $extraCss = <<<CSS
         .filter-row {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
 
         .date-inputs-row {
@@ -173,25 +173,27 @@ $extraCss = <<<CSS
             display: flex;
             flex-direction: column;
             flex: 1;
+            margin-bottom: 0;
         }
 
         .form-group label {
             display: block;
-            font-weight: bold;
-            font-size: 0.7em;
-            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 0.75em;
+            margin-bottom: 6px;
             text-transform: uppercase;
-            color: #777;
+            color: #6c757d;
         }
 
         .form-group input,
         .form-group select {
-            padding: 8px;
-            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
             border-radius: 4px;
             height: 38px;
             box-sizing: border-box;
-            font-size: 16px;
+            font-size: 14px;
+            background: white;
         }
 
         .btn-filter {
@@ -201,41 +203,57 @@ $extraCss = <<<CSS
             padding: 0 20px;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             height: 38px;
             box-sizing: border-box;
+        }
+
+        .btn-filter:hover {
+            opacity: 0.9;
         }
 
         /* View Toggle */
         .view-toggle {
             display: flex;
-            gap: 5px;
+            gap: 0;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
         }
 
         .btn-view {
             flex: 1;
-            padding: 0 12px;
-            border: 1px solid #ccc;
+            padding: 0 16px;
+            border: none;
+            border-right: 1px solid #dee2e6;
             background: white;
-            border-radius: 4px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 0.85em;
-            color: #555;
+            color: #495057;
             height: 38px;
             box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        .btn-view:last-child {
+            border-right: none;
+        }
+
+        .btn-view:hover {
+            background: #f8f9fa;
         }
 
         .btn-view.active {
             background: #2c3e50;
             color: white;
-            border-color: #2c3e50;
         }
 
-        /* Button row for mobile */
+        /* Button row */
         .button-row {
             display: flex;
             gap: 10px;
+            align-items: stretch;
         }
 
         .button-row .view-toggle {
@@ -244,8 +262,7 @@ $extraCss = <<<CSS
 
         .button-row .btn-filter {
             flex: 0 0 auto;
-            width: auto;
-            padding: 0 25px;
+            min-width: 80px;
         }
 
         /* Flatpickr preset buttons */
@@ -619,36 +636,41 @@ $extraCss = <<<CSS
 
             .filter-row {
                 flex-direction: row;
-                flex-wrap: wrap;
-                align-items: flex-end;
+                align-items: flex-start;
                 gap: 12px;
+            }
+
+            .form-group.coach-select {
+                flex: 0 0 200px;
             }
 
             .date-inputs-row {
                 flex: 0 0 auto;
+                display: flex;
+                gap: 10px;
             }
 
-            .form-group {
+            .date-inputs-row .form-group {
                 flex: 0 0 auto;
-            }
-
-            .form-group.coach-select {
-                min-width: 150px;
+                min-width: 140px;
             }
 
             .button-row {
+                flex: 0 0 auto;
                 display: flex;
-                gap: 8px;
-                align-items: flex-end;
+                gap: 10px;
+                align-items: flex-start;
+                margin-top: 0;
             }
 
             .button-row .view-toggle {
                 flex: 0 0 auto;
+                width: 180px;
             }
 
-            .btn-filter {
-                width: auto;
-                padding: 0 20px;
+            .button-row .btn-filter {
+                flex: 0 0 auto;
+                min-width: 80px;
             }
 
             .stats-bar {
