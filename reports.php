@@ -121,8 +121,6 @@ $extraCss = <<<CSS
             padding: 15px;
             color: #333;
             margin: 0;
-            max-width: 900px;
-            margin: 0 auto;
         }
 
         /* Page Header */
