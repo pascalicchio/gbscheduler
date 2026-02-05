@@ -721,20 +721,22 @@ $extraCss = <<<CSS
 
             /* Convert calendar to list view on mobile */
             .calendar-grid {
-                display: block;
-                background: transparent;
-                border: none;
+                display: block !important;
+                background: #f8f9fa !important;
+                border: 2px solid red !important; /* DEBUG */
                 gap: 0;
+                padding: 10px;
+                min-height: 200px; /* DEBUG */
             }
 
             .calendar-day {
-                display: block;
-                min-height: auto;
+                display: block !important;
+                min-height: 80px !important; /* DEBUG */
                 padding: 12px;
                 margin-bottom: 8px;
                 border-radius: 8px;
-                border: 1px solid #dee2e6;
-                background: white;
+                border: 2px solid blue !important; /* DEBUG */
+                background: white !important;
             }
 
             .calendar-day.other-month {
