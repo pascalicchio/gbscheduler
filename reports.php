@@ -935,6 +935,7 @@ require_once 'includes/header.php';
     <?php endforeach; ?>
 
     <?php else: ?>
+        <!-- DEBUG: Calendar View Active -->
         <?php
         // Build activities array for calendar view
         $all_activities = [];
