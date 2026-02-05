@@ -118,52 +118,70 @@ $extraCss = <<<CSS
         body {
             font-family: sans-serif;
             background: var(--bg);
-            padding: 20px;
+            padding: 15px;
             color: #333;
             margin: 0;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
+        /* Page Header */
         .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .page-header h2 {
+            margin: 0;
+            font-size: 1.1em;
+            color: #2c3e50;
         }
 
         .btn-back {
-            padding: 10px 15px;
+            padding: 8px 12px;
             background: #6c757d;
             color: white;
             text-decoration: none;
             border-radius: 4px;
             font-weight: bold;
+            font-size: 0.85em;
+            white-space: nowrap;
         }
 
+        /* Filter Card */
         .filter-card {
             background: white;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            margin-bottom: 15px;
         }
 
         .filter-row {
             display: flex;
-            gap: 15px;
-            align-items: flex-end;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .date-inputs-row {
+            display: flex;
+            gap: 10px;
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
+            flex: 1;
         }
 
         .form-group label {
             display: block;
             font-weight: bold;
-            font-size: 0.8em;
-            margin-bottom: 5px;
+            font-size: 0.7em;
+            margin-bottom: 4px;
             text-transform: uppercase;
             color: #777;
         }
@@ -173,20 +191,63 @@ $extraCss = <<<CSS
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            height: 35px;
+            height: 38px;
             box-sizing: border-box;
+            font-size: 16px;
         }
 
         .btn-filter {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 8px 20px;
+            padding: 0 20px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            height: 35px;
+            height: 38px;
             box-sizing: border-box;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 0 12px;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: #555;
+            height: 38px;
+            box-sizing: border-box;
+        }
+
+        .btn-view.active {
+            background: #2c3e50;
+            color: white;
+            border-color: #2c3e50;
+        }
+
+        /* Button row for mobile */
+        .button-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-row .view-toggle {
+            flex: 1;
+        }
+
+        .button-row .btn-filter {
+            flex: 0 0 auto;
+            width: auto;
+            padding: 0 25px;
         }
 
         /* Flatpickr preset buttons */
@@ -216,139 +277,196 @@ $extraCss = <<<CSS
             border-color: #007bff;
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .page-header {
-                flex-direction: column;
-                gap: 10px;
-                text-align: center;
-            }
-
-            .page-header h2 {
-                font-size: 1.3em;
-            }
-
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .form-group {
-                width: 100%;
-            }
-
-            .form-group input,
-            .form-group select {
-                width: 100%;
-            }
-
-            .btn-filter {
-                width: 100%;
-                margin-top: 5px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .stat-card .value {
-                font-size: 1.8em;
-            }
-
-            .loc-header {
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            .loc-summary {
-                font-size: 0.8em;
-            }
-
-            table {
-                font-size: 0.85em;
-            }
-
-            th, td {
-                padding: 8px 10px;
-            }
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
+        /* Stats Summary - Compact Horizontal Bar */
+        .stats-bar {
             background: white;
-            padding: 20px;
             border-radius: 8px;
-            text-align: center;
+            padding: 12px 15px;
+            margin-bottom: 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e1e4e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-        .stat-card h3 {
-            margin: 0 0 5px 0;
-            font-size: 0.85em;
-            text-transform: uppercase;
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-item .label {
+            font-size: 0.75em;
             color: #777;
-            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 600;
         }
 
-        .stat-card .value {
-            font-size: 2.2em;
+        .stat-item .value {
+            font-size: 1.1em;
             font-weight: 700;
             color: #2c3e50;
         }
 
-        .money {
+        .stat-item .value.money {
             color: #28a745;
+            font-size: 1.3em;
         }
 
+        .stat-divider {
+            width: 1px;
+            height: 30px;
+            background: #e1e4e8;
+        }
+
+        /* Location Sections */
         .location-section {
-            margin-bottom: 40px;
+            margin-bottom: 15px;
             background: white;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e1e4e8;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
 
         .loc-header {
             background: #2c3e50;
             color: white;
-            padding: 12px 20px;
+            padding: 10px 15px;
             font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .loc-header-content {
             display: flex;
             justify-content: space-between;
-            font-size: 1.1em;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .loc-summary {
-            font-size: 0.9em;
-            opacity: 0.9;
-            font-weight: normal;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .loc-summary strong {
-            color: #81ffb3;
+        .summary-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .summary-badge.total {
+            background: #81ffb3;
+            color: #2c3e50;
+        }
+
+        .sub-header {
+            background: #f8f9fa;
+            padding: 8px 15px;
+            font-weight: bold;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            color: #555;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sub-header-private {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        /* Note icon */
+        .note-icon {
+            cursor: pointer;
+            color: #1565c0;
+            font-size: 1.1em;
+            padding: 4px;
+        }
+
+        .note-icon:hover {
+            color: #0d47a1;
+        }
+
+        /* Note popup */
+        .note-popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .note-popup-overlay.active {
+            display: flex;
+        }
+
+        .note-popup {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        .note-popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .note-popup-header h4 {
+            margin: 0;
+            color: #1565c0;
+            font-size: 1em;
+        }
+
+        .note-popup-close {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+            line-height: 1;
+        }
+
+        .note-popup-close:hover {
+            color: #333;
+        }
+
+        .note-popup-content {
+            color: #333;
+            line-height: 1.5;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 0.9em;
         }
 
-        th,
-        td {
-            padding: 12px 20px;
+        th, td {
+            padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
@@ -356,9 +474,10 @@ $extraCss = <<<CSS
         th {
             background: #fff;
             color: #999;
-            font-size: 0.8em;
+            font-size: 0.75em;
             text-transform: uppercase;
             border-bottom: 2px solid #eee;
+            white-space: nowrap;
         }
 
         .money-cell {
@@ -366,21 +485,11 @@ $extraCss = <<<CSS
             font-weight: bold;
             color: #28a745;
             text-align: right;
-        }
-
-        .sub-header {
-            background: #f8f9fa;
-            padding: 8px 20px;
-            font-weight: bold;
-            font-size: 0.8em;
-            text-transform: uppercase;
-            color: #555;
-            border-bottom: 1px solid #eee;
-            margin-top: 0;
+            font-size: 1.1em;
         }
 
         .badge-role {
-            font-size: 0.8em;
+            font-size: 0.75em;
             padding: 2px 6px;
             border-radius: 4px;
             font-weight: bold;
@@ -388,30 +497,7 @@ $extraCss = <<<CSS
             color: #555;
         }
 
-        /* View Mode Buttons */
-        .view-toggle {
-            display: flex;
-            gap: 5px;
-        }
-
-        .btn-view {
-            padding: 8px 15px;
-            border: 1px solid #ccc;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.85em;
-            color: #555;
-        }
-
-        .btn-view.active {
-            background: #2c3e50;
-            color: white;
-            border-color: #2c3e50;
-        }
-
-        /* Calendar View Styles */
+        /* Calendar View */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -420,27 +506,26 @@ $extraCss = <<<CSS
             border: 1px solid #dee2e6;
             border-radius: 8px;
             overflow: hidden;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
         }
 
         .calendar-header {
             background: #2c3e50;
             color: white;
-            padding: 12px 8px;
+            padding: 10px 4px;
             text-align: center;
             font-weight: bold;
-            font-size: 0.85em;
+            font-size: 0.75em;
         }
 
         .calendar-day {
             background: white;
-            min-height: 120px;
-            padding: 8px;
-            vertical-align: top;
+            min-height: 90px;
+            padding: 6px;
         }
 
         .calendar-day.other-month {
-            background: #fff;
+            background: #fafafa;
         }
 
         .calendar-day.today {
@@ -449,37 +534,37 @@ $extraCss = <<<CSS
 
         .day-number {
             font-weight: bold;
-            font-size: 0.9em;
+            font-size: 0.85em;
             color: #495057;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .day-activities {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
         }
 
         .activity-item {
-            font-size: 0.75em;
-            padding: 4px 6px;
+            font-size: 0.7em;
+            padding: 3px 5px;
             border-radius: 3px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
         }
 
         .activity-item.regular {
             background: #e3f2fd;
             color: #1565c0;
-            border-left: 3px solid #1565c0;
+            border-left: 2px solid #1565c0;
         }
 
         .activity-item.private {
             background: #fff3e0;
             color: #e65100;
-            border-left: 3px solid #e65100;
+            border-left: 2px solid #e65100;
         }
 
         .activity-time {
@@ -500,80 +585,174 @@ $extraCss = <<<CSS
         }
 
         .day-total {
-            margin-top: 6px;
-            padding-top: 6px;
+            margin-top: 4px;
+            padding-top: 4px;
             border-top: 1px solid #eee;
-            font-size: 0.8em;
+            font-size: 0.7em;
             font-weight: bold;
             color: #28a745;
             text-align: right;
         }
 
         .location-group {
-            margin-bottom: 4px;
-        }
-
-        .location-group:last-child {
-            margin-bottom: 0;
+            margin-bottom: 3px;
         }
 
         .location-label {
-            font-size: 0.65em;
+            font-size: 0.6em;
             font-weight: bold;
             color: #6c757d;
             text-transform: uppercase;
-            margin-bottom: 2px;
-            padding: 2px 4px;
+            margin-bottom: 1px;
+            padding: 1px 3px;
             background: #e9ecef;
             border-radius: 2px;
         }
 
-        @media (max-width: 900px) {
-            .calendar-grid {
-                font-size: 0.85em;
+        /* Desktop Enhancements */
+        @media (min-width: 600px) {
+            body {
+                padding: 20px;
+            }
+
+            .page-header h2 {
+                font-size: 1.3em;
+            }
+
+            .filter-row {
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: flex-end;
+                gap: 12px;
+            }
+
+            .date-inputs-row {
+                flex: 0 0 auto;
+            }
+
+            .form-group {
+                flex: 0 0 auto;
+            }
+
+            .form-group.coach-select {
+                min-width: 150px;
+            }
+
+            .button-row {
+                display: flex;
+                gap: 8px;
+                align-items: flex-end;
+            }
+
+            .button-row .view-toggle {
+                flex: 0 0 auto;
+            }
+
+            .btn-filter {
+                width: auto;
+                padding: 0 20px;
+            }
+
+            .stats-bar {
+                padding: 15px 20px;
+            }
+
+            .stat-item .value {
+                font-size: 1.2em;
+            }
+
+            .stat-item .value.money {
+                font-size: 1.5em;
             }
 
             .calendar-day {
-                min-height: 80px;
-                padding: 4px;
+                min-height: 110px;
+                padding: 8px;
+            }
+
+            .calendar-header {
+                font-size: 0.85em;
+                padding: 12px 8px;
             }
 
             .activity-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1px;
+                font-size: 0.75em;
+            }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .page-header h2 {
+                font-size: 0.95em;
+            }
+
+            .btn-back {
+                padding: 6px 10px;
+                font-size: 0.8em;
+            }
+
+            .stats-bar {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .stat-item .label {
+                font-size: 0.65em;
+            }
+
+            .stat-item .value {
+                font-size: 1em;
+            }
+
+            .stat-item .value.money {
+                font-size: 1.15em;
+            }
+
+            .stat-divider {
+                display: none;
+            }
+
+            .calendar-header {
+                padding: 6px 2px;
+                font-size: 0.6em;
+            }
+
+            .calendar-day {
+                min-height: 70px;
+                padding: 4px;
+            }
+
+            .day-number {
+                font-size: 0.75em;
+            }
+
+            .activity-item {
+                font-size: 0.6em;
+                padding: 2px 3px;
             }
 
             .activity-desc {
                 display: none;
             }
-        }
 
-        @media (max-width: 600px) {
-            .calendar-header {
-                padding: 8px 4px;
-                font-size: 0.7em;
+            .day-total {
+                font-size: 0.6em;
             }
 
-            .calendar-day {
-                min-height: 60px;
+            .location-label {
+                font-size: 0.5em;
             }
 
-            .day-number {
+            table {
                 font-size: 0.8em;
             }
 
-            .activity-item {
-                padding: 2px 4px;
-                font-size: 0.7em;
-            }
-
-            .activity-time {
-                display: none;
-            }
-
-            .day-total {
-                font-size: 0.7em;
+            th, td {
+                padding: 8px;
             }
         }
 CSS;
@@ -582,15 +761,15 @@ require_once 'includes/header.php';
 ?>
 
     <div class="page-header">
-        <h2 style="margin:0; color:#2c3e50;">Payroll Report: <?= e($coach['name']) ?></h2>
-        <a href="dashboard.php" class="btn-back">Back to Schedule</a>
+        <h2>Payroll: <?= e($coach['name']) ?></h2>
+        <a href="dashboard.php" class="btn-back">Back</a>
     </div>
 
     <form class="filter-card" method="GET" id="reportForm">
         <div class="filter-row">
             <?php if ($is_admin): ?>
-                <div class="form-group">
-                    <label>Select Coach</label>
+                <div class="form-group coach-select">
+                    <label>Coach</label>
                     <select name="coach_id">
                         <?php foreach ($all_coaches as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= ($target_user_id == $c['id']) ? 'selected' : '' ?>><?= $c['name'] ?></option>
@@ -598,39 +777,40 @@ require_once 'includes/header.php';
                     </select>
                 </div>
             <?php endif; ?>
-            <div class="form-group">
-                <label>Start Date</label>
-                <input type="text" name="start_date" id="start_date" value="<?= $start_date ?>" readonly>
+            <div class="date-inputs-row">
+                <div class="form-group">
+                    <label>From</label>
+                    <input type="text" name="start_date" id="start_date" value="<?= $start_date ?>" readonly>
+                </div>
+                <div class="form-group">
+                    <label>To</label>
+                    <input type="text" name="end_date" id="end_date" value="<?= $end_date ?>" readonly>
+                </div>
             </div>
-            <div class="form-group">
-                <label>End Date</label>
-                <input type="text" name="end_date" id="end_date" value="<?= $end_date ?>" readonly>
-            </div>
-            <div class="form-group">
-                <label>View</label>
+            <div class="button-row">
                 <div class="view-toggle">
                     <button type="submit" name="view" value="list" class="btn-view <?= $view_mode == 'list' ? 'active' : '' ?>">List</button>
                     <button type="submit" name="view" value="calendar" class="btn-view <?= $view_mode == 'calendar' ? 'active' : '' ?>">Calendar</button>
                 </div>
-            </div>
-            <div class="form-group">
-                <button type="submit" class="btn-filter">Generate Report</button>
+                <button type="submit" class="btn-filter">Go</button>
             </div>
         </div>
     </form>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <h3>Total Classes</h3>
-            <div class="value"><?= $grand_total_classes ?></div>
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="label">Classes</span>
+            <span class="value"><?= $grand_total_classes ?></span>
         </div>
-        <div class="stat-card">
-            <h3>Total Regular Hours</h3>
-            <div class="value"><?= number_format($grand_total_hours, 1) ?> <small style="font-size:0.4em; color:#999; vertical-align:middle;">HRS</small></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="label">Hours</span>
+            <span class="value"><?= number_format($grand_total_hours, 1) ?></span>
         </div>
-        <div class="stat-card">
-            <h3>Total Payout</h3>
-            <div class="value money">$<?= number_format($grand_total_pay, 2) ?></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="label">Total Payout</span>
+            <span class="value money">$<?= number_format($grand_total_pay, 2) ?></span>
         </div>
     </div>
 
@@ -639,58 +819,70 @@ require_once 'includes/header.php';
     <?php foreach ($locations_data as $loc_id => $data): ?>
         <div class="location-section">
             <div class="loc-header">
-                <span><i class="fas fa-map-marker-alt"></i> <?= $data['name'] ?></span>
-                <span class="loc-summary">Regular: $<?= number_format($data['totals']['reg_pay'], 2) ?> &nbsp;|&nbsp; Privates: $<?= number_format($data['totals']['priv_pay'], 2) ?> &nbsp;|&nbsp; <strong>Total: $<?= number_format($data['totals']['reg_pay'] + $data['totals']['priv_pay'], 2) ?></strong></span>
+                <div class="loc-header-content">
+                    <span><?= $data['name'] ?></span>
+                    <span class="loc-summary">
+                        <span class="summary-badge">Reg: $<?= number_format($data['totals']['reg_pay'], 2) ?></span>
+                        <span class="summary-badge">Priv: $<?= number_format($data['totals']['priv_pay'], 2) ?></span>
+                        <span class="summary-badge total">$<?= number_format($data['totals']['reg_pay'] + $data['totals']['priv_pay'], 2) ?></span>
+                    </span>
+                </div>
             </div>
 
             <?php if (!empty($data['reg'])): ?>
                 <div class="sub-header">Regular Classes</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Class</th>
-                            <th>Role</th>
-                            <th>Hours</th>
-                            <th style="text-align:right">Pay</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($data['reg'] as $rc): ?>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
                             <tr>
-                                <td><?= date('M d', strtotime($rc['class_date'])) ?></td>
-                                <td><?= e($rc['class_name']) ?></td>
-                                <td><span class="badge-role"><?= ucfirst($rc['position']) ?></span></td>
-                                <td><?= number_format($rc['hours'], 1) ?></td>
-                                <td class="money-cell">$<?= number_format($rc['pay'], 2) ?></td>
+                                <th>Date</th>
+                                <th>Class</th>
+                                <th>Role</th>
+                                <th>Hours</th>
+                                <th style="text-align:right">Pay</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($data['reg'] as $rc): ?>
+                                <tr>
+                                    <td><?= date('M d', strtotime($rc['class_date'])) ?></td>
+                                    <td><?= e($rc['class_name']) ?></td>
+                                    <td><span class="badge-role"><?= ucfirst($rc['position']) ?></span></td>
+                                    <td><?= number_format($rc['hours'], 1) ?></td>
+                                    <td class="money-cell">$<?= number_format($rc['pay'], 2) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
 
             <?php if (!empty($data['priv'])): ?>
-                <div class="sub-header">Private Classes / Activities</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Student / Activity</th>
-                            <th>Time</th>
-                            <th style="text-align:right">Payout</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($data['priv'] as $pc): ?>
+                <div class="sub-header sub-header-private">Private Classes / Activities</div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
                             <tr>
-                                <td><?= date('M d', strtotime($pc['class_date'])) ?></td>
-                                <td><?= e($pc['student_name']) ?></td>
-                                <td><?= $pc['class_time'] ? date('g:i A', strtotime($pc['class_time'])) : '-' ?></td>
-                                <td class="money-cell">$<?= number_format($pc['payout'], 2) ?></td>
+                                <th>Date</th>
+                                <th>Student / Activity</th>
+                                <th>Time</th>
+                                <th></th>
+                                <th style="text-align:right">Payout</th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($data['priv'] as $pc): ?>
+                                <tr>
+                                    <td><?= date('M d', strtotime($pc['class_date'])) ?></td>
+                                    <td><?= e($pc['student_name']) ?></td>
+                                    <td><?= $pc['class_time'] ? date('g:i A', strtotime($pc['class_time'])) : '-' ?></td>
+                                    <td><?php if (!empty($pc['notes'])): ?><span class="note-icon" onclick="showNote(this)" data-note="<?= e($pc['notes']) ?>"><i class="fas fa-sticky-note"></i></span><?php endif; ?></td>
+                                    <td class="money-cell">$<?= number_format($pc['payout'], 2) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>
@@ -933,6 +1125,39 @@ document.addEventListener('DOMContentLoaded', function() {
         startPicker.set('maxDate', endInput.value);
     }
 });
+
+// Note popup functionality
+function showNote(element) {
+    const note = element.getAttribute('data-note');
+    document.getElementById('noteContent').textContent = note;
+    document.getElementById('notePopupOverlay').classList.add('active');
+}
+
+function closeNotePopup() {
+    document.getElementById('notePopupOverlay').classList.remove('active');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('notePopupOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) {
+                closeNotePopup();
+            }
+        });
+    }
+});
 </script>
+
+<!-- Note Popup -->
+<div class="note-popup-overlay" id="notePopupOverlay">
+    <div class="note-popup">
+        <div class="note-popup-header">
+            <h4><i class="fas fa-sticky-note"></i> Note</h4>
+            <button class="note-popup-close" onclick="closeNotePopup()">&times;</button>
+        </div>
+        <div class="note-popup-content" id="noteContent"></div>
+    </div>
+</div>
 
 <?php require_once 'includes/footer.php'; ?>
