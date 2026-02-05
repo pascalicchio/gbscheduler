@@ -639,6 +639,7 @@ $extraCss = <<<CSS
         cursor: pointer;
         font-size: 0.85em;
         font-weight: 600;
+        width: 120px;
     }
 
     .btn-pay:hover {
@@ -653,6 +654,7 @@ $extraCss = <<<CSS
         border-radius: 4px;
         cursor: pointer;
         font-size: 0.85em;
+        width: 120px;
     }
 
     /* Modal styles */
