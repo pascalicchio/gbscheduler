@@ -678,7 +678,7 @@ $extraCss = <<<CSS
             }
         }
 
-        /* Small Mobile */
+        /* Small Mobile - List-based calendar */
         @media (max-width: 480px) {
             body {
                 padding: 10px;
@@ -714,35 +714,84 @@ $extraCss = <<<CSS
                 display: none;
             }
 
+            /* Hide calendar grid headers on mobile */
             .calendar-header {
-                padding: 6px 2px;
-                font-size: 0.6em;
-            }
-
-            .calendar-day {
-                min-height: 70px;
-                padding: 4px;
-            }
-
-            .day-number {
-                font-size: 0.75em;
-            }
-
-            .activity-item {
-                font-size: 0.6em;
-                padding: 2px 3px;
-            }
-
-            .activity-desc {
                 display: none;
             }
 
+            /* Convert calendar to list view on mobile */
+            .calendar-grid {
+                display: block;
+                background: transparent;
+                border: none;
+                gap: 0;
+            }
+
+            .calendar-day {
+                display: block;
+                min-height: auto;
+                padding: 12px;
+                margin-bottom: 8px;
+                border-radius: 8px;
+                border: 1px solid #dee2e6;
+                background: white;
+            }
+
+            .calendar-day.other-month {
+                display: none; /* Hide other month days on mobile */
+            }
+
+            .calendar-day.today {
+                border-color: #ffc107;
+                background: #fff3cd;
+            }
+
+            /* Show day of week on mobile */
+            .day-number {
+                font-size: 1.1em;
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #e9ecef;
+                color: #2c3e50;
+            }
+
+            .day-number::before {
+                content: attr(data-day-name) ", ";
+                font-weight: 600;
+                color: #495057;
+                margin-right: 4px;
+            }
+
+            .activity-item {
+                font-size: 0.85em;
+                padding: 8px;
+                margin-bottom: 4px;
+            }
+
+            .activity-time {
+                font-size: 1em;
+            }
+
+            .activity-desc {
+                white-space: normal;
+                word-wrap: break-word;
+            }
+
+            .activity-pay {
+                font-size: 1em;
+            }
+
             .day-total {
-                font-size: 0.6em;
+                font-size: 0.9em;
+                padding: 8px;
+                margin-top: 8px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                text-align: center;
             }
 
             .location-label {
-                font-size: 0.5em;
+                font-size: 0.7em;
             }
 
             table {
@@ -981,9 +1030,10 @@ require_once 'includes/header.php';
                 $classes = ['calendar-day'];
                 if ($is_other_month) $classes[] = 'other-month';
                 if ($is_today) $classes[] = 'today';
+                $day_name = $current->format('D'); // Mon, Tue, Wed, etc.
             ?>
                 <div class="<?= implode(' ', $classes) ?>">
-                    <div class="day-number"><?= $current->format('j') ?></div>
+                    <div class="day-number" data-day-name="<?= $day_name ?>"><?= $current->format('j') ?></div>
                     <?php if (!empty($by_location)): ?>
                         <div class="day-activities">
                             <?php foreach ($by_location as $loc_name => $acts): ?>
