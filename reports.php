@@ -1028,12 +1028,18 @@ require_once 'includes/header.php';
                 $is_other_month = (int)$current->format('n') !== $current_month;
                 $is_today = $date_str === $today;
                 $day_activities = $activities_by_date[$date_str] ?? [];
-                $day_total = array_sum(array_column($day_activities, 'pay'));
+                
+                // Calculate day total safely
+                $day_total = 0;
+                foreach ($day_activities as $act) {
+                    $day_total += isset($act['pay']) ? (float)$act['pay'] : 0;
+                }
 
                 // Group by location
                 $by_location = [];
                 foreach ($day_activities as $act) {
-                    $by_location[$act['location']][] = $act;
+                    $loc = $act['location'] ?? 'Unknown';
+                    $by_location[$loc][] = $act;
                 }
 
                 $classes = ['calendar-day'];
