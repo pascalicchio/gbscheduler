@@ -722,21 +722,20 @@ $extraCss = <<<CSS
             /* Convert calendar to list view on mobile */
             .calendar-grid {
                 display: block !important;
-                background: #f8f9fa !important;
-                border: 2px solid red !important; /* DEBUG */
+                background: transparent;
+                border: none;
                 gap: 0;
-                padding: 10px;
-                min-height: 200px; /* DEBUG */
+                padding: 0;
             }
 
             .calendar-day {
                 display: block !important;
-                min-height: 80px !important; /* DEBUG */
+                min-height: auto;
                 padding: 12px;
                 margin-bottom: 8px;
                 border-radius: 8px;
-                border: 2px solid blue !important; /* DEBUG */
-                background: white !important;
+                border: 1px solid #dee2e6;
+                background: white;
             }
 
             .calendar-day.other-month {
@@ -937,7 +936,6 @@ require_once 'includes/header.php';
     <?php endforeach; ?>
 
     <?php else: ?>
-        <!-- DEBUG: Calendar View Active -->
         <?php
         // Build activities array for calendar view
         $all_activities = [];
@@ -1002,12 +1000,6 @@ require_once 'includes/header.php';
 
         $current_month = date('n', strtotime($start_date));
         $today = date('Y-m-d');
-        
-        // DEBUG
-        echo "<!-- DEBUG: Activities count: " . count($all_activities) . " -->\n";
-        echo "<!-- DEBUG: Cal start: " . $cal_start->format('Y-m-d') . " -->\n";
-        echo "<!-- DEBUG: Cal end: " . $cal_end->format('Y-m-d') . " -->\n";
-        echo "<!-- DEBUG: Current month: " . $current_month . " -->\n";
         ?>
 
         <div class="calendar-grid">
@@ -1072,7 +1064,6 @@ require_once 'includes/header.php';
             <?php
                 $current->modify('+1 day');
             endwhile;
-            echo "<!-- DEBUG: Total days rendered: " . $day_count . " -->\n";
             ?>
         </div>
 
