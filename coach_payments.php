@@ -175,7 +175,7 @@ $unpaid_counts = [
     'monthly' => 0
 ];
 
-// Count unpaid users for each frequency
+// Count unpaid users for each frequency (filtered by location if selected)
 foreach ([
     'weekly' => [$week_start_calc, $week_end_calc],
     'biweekly' => [$biweekly_start_date, $biweekly_end_date],
@@ -183,9 +183,15 @@ foreach ([
 ] as $freq => $dates) {
     list($period_start, $period_end) = $dates;
 
-    // Get all users with this frequency
-    $freq_users = $pdo->prepare("SELECT id FROM users WHERE payment_frequency = ?");
-    $freq_users->execute([$freq]);
+    // Get users with this frequency (optionally filtered by location)
+    $freq_sql = "SELECT id FROM users WHERE payment_frequency = ?";
+    $freq_params = [$freq];
+    if ($filter_location_id) {
+        $freq_sql .= " AND id IN (SELECT user_id FROM user_locations WHERE location_id = ?)";
+        $freq_params[] = $filter_location_id;
+    }
+    $freq_users = $pdo->prepare($freq_sql);
+    $freq_users->execute($freq_params);
     $users_with_freq = $freq_users->fetchAll(PDO::FETCH_COLUMN);
 
     foreach ($users_with_freq as $user_id) {
@@ -745,26 +751,27 @@ require_once 'includes/header.php';
 <?= $msg ?>
 
 <!-- Tabs -->
+<?php $location_param = $filter_location_id ? '&location_id=' . urlencode($filter_location_id) : ''; ?>
 <div class="tabs">
-    <a href="?tab=weekly" class="tab-btn <?= $tab === 'weekly' ? 'active' : '' ?>">
+    <a href="?tab=weekly<?= $location_param ?>" class="tab-btn <?= $tab === 'weekly' ? 'active' : '' ?>">
         <i class="fas fa-calendar-week"></i> Weekly
         <?php if ($unpaid_counts['weekly'] > 0): ?>
             <span class="tab-badge"><?= $unpaid_counts['weekly'] ?></span>
         <?php endif; ?>
     </a>
-    <a href="?tab=biweekly" class="tab-btn <?= $tab === 'biweekly' ? 'active' : '' ?>">
+    <a href="?tab=biweekly<?= $location_param ?>" class="tab-btn <?= $tab === 'biweekly' ? 'active' : '' ?>">
         <i class="fas fa-calendar-alt"></i> Biweekly
         <?php if ($unpaid_counts['biweekly'] > 0): ?>
             <span class="tab-badge"><?= $unpaid_counts['biweekly'] ?></span>
         <?php endif; ?>
     </a>
-    <a href="?tab=monthly" class="tab-btn <?= $tab === 'monthly' ? 'active' : '' ?>">
+    <a href="?tab=monthly<?= $location_param ?>" class="tab-btn <?= $tab === 'monthly' ? 'active' : '' ?>">
         <i class="fas fa-calendar"></i> Monthly
         <?php if ($unpaid_counts['monthly'] > 0): ?>
             <span class="tab-badge"><?= $unpaid_counts['monthly'] ?></span>
         <?php endif; ?>
     </a>
-    <a href="?tab=history" class="tab-btn <?= $tab === 'history' ? 'active' : '' ?>">
+    <a href="?tab=history<?= $location_param ?>" class="tab-btn <?= $tab === 'history' ? 'active' : '' ?>">
         <i class="fas fa-history"></i> History
     </a>
 </div>
