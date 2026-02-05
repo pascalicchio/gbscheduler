@@ -358,7 +358,7 @@ if ($tab !== 'history') {
         $coach_data[$uid]['total_pay'] -= $deduction;
     }
 
-    // Check which coaches have been paid for the standard period (not custom filtered dates)
+    // Check which coaches have been paid for the FILTERED period (use actual filter dates)
     // Now we get SUM of all payments for this period to support multiple/partial payments
     $paid_check = $pdo->prepare("
         SELECT user_id, 
@@ -370,7 +370,7 @@ if ($tab !== 'history') {
         WHERE period_start = ? AND period_end = ?
         GROUP BY user_id
     ");
-    $paid_check->execute([$default_start, $default_end]);
+    $paid_check->execute([$start_date, $end_date]);
     $paid_records = [];
     foreach ($paid_check->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $paid_records[$p['user_id']] = $p;
