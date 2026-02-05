@@ -1000,6 +1000,12 @@ require_once 'includes/header.php';
 
         $current_month = date('n', strtotime($start_date));
         $today = date('Y-m-d');
+        
+        // DEBUG
+        echo "<!-- DEBUG: Activities count: " . count($all_activities) . " -->\n";
+        echo "<!-- DEBUG: Cal start: " . $cal_start->format('Y-m-d') . " -->\n";
+        echo "<!-- DEBUG: Cal end: " . $cal_end->format('Y-m-d') . " -->\n";
+        echo "<!-- DEBUG: Current month: " . $current_month . " -->\n";
         ?>
 
         <div class="calendar-grid">
@@ -1015,7 +1021,9 @@ require_once 'includes/header.php';
             <!-- Calendar Days -->
             <?php
             $current = clone $cal_start;
+            $day_count = 0;
             while ($current <= $cal_end):
+                $day_count++;
                 $date_str = $current->format('Y-m-d');
                 $is_other_month = (int)$current->format('n') !== $current_month;
                 $is_today = $date_str === $today;
@@ -1056,6 +1064,7 @@ require_once 'includes/header.php';
             <?php
                 $current->modify('+1 day');
             endwhile;
+            echo "<!-- DEBUG: Total days rendered: " . $day_count . " -->\n";
             ?>
         </div>
 
