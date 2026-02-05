@@ -349,13 +349,13 @@ if ($tab !== 'history') {
         $coach_data[$uid]['total_pay'] -= $deduction;
     }
 
-    // Check which coaches have been paid for this period
+    // Check which coaches have been paid for the standard period (not custom filtered dates)
     $paid_check = $pdo->prepare("
         SELECT user_id, id, amount, payment_date, payment_method
         FROM coach_payments
         WHERE period_start = ? AND period_end = ?
     ");
-    $paid_check->execute([$start_date, $end_date]);
+    $paid_check->execute([$default_start, $default_end]);
     $paid_records = [];
     foreach ($paid_check->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $paid_records[$p['user_id']] = $p;
@@ -966,8 +966,8 @@ require_once 'includes/header.php';
         <form method="POST">
             <input type="hidden" name="action" value="mark_paid">
             <input type="hidden" name="user_id" id="modal_user_id">
-            <input type="hidden" name="period_start" value="<?= $start_date ?>">
-            <input type="hidden" name="period_end" value="<?= $end_date ?>">
+            <input type="hidden" name="period_start" value="<?= $default_start ?>">
+            <input type="hidden" name="period_end" value="<?= $default_end ?>">
 
             <div class="modal-body">
                 <div class="form-group">
@@ -976,7 +976,7 @@ require_once 'includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Period</label>
-                    <input type="text" value="<?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?>" readonly style="background:#f8f9fa;">
+                    <input type="text" value="<?= date('M d', strtotime($default_start)) ?> - <?= date('M d', strtotime($default_end)) ?>" readonly style="background:#f8f9fa;">
                 </div>
                 <div class="form-group">
                     <label>Amount ($)</label>
