@@ -77,6 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash("Payment deleted.", 'error');
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'delete_all_payments') {
+        $user_id = $_POST['user_id'];
+        $period_start = $_POST['period_start'];
+        $period_end = $_POST['period_end'];
+        $stmt = $pdo->prepare("DELETE FROM coach_payments WHERE user_id = ? AND period_start = ? AND period_end = ?");
+        $stmt->execute([$user_id, $period_start, $period_end]);
+        setFlash("All payments deleted for this period.", 'error');
+        header("Location: " . $_SERVER['REQUEST_URI']);
+        exit();
     } elseif (isset($_POST['action']) && $_POST['action'] === 'update_conversions') {
         $user_id = $_POST['user_id'];
         $period_month = $_POST['period_month'];
@@ -350,10 +359,16 @@ if ($tab !== 'history') {
     }
 
     // Check which coaches have been paid for the standard period (not custom filtered dates)
+    // Now we get SUM of all payments for this period to support multiple/partial payments
     $paid_check = $pdo->prepare("
-        SELECT user_id, id, amount, payment_date, payment_method
+        SELECT user_id, 
+               SUM(amount) as total_paid,
+               MAX(payment_date) as last_payment_date,
+               MAX(id) as last_payment_id,
+               MAX(payment_method) as payment_method
         FROM coach_payments
         WHERE period_start = ? AND period_end = ?
+        GROUP BY user_id
     ");
     $paid_check->execute([$default_start, $default_end]);
     $paid_records = [];
@@ -363,10 +378,13 @@ if ($tab !== 'history') {
 
     // Recalculate unpaid count for current tab based on coaches with actual earnings
     // This ensures badge matches the table (only counting coaches with total_pay > 0)
+    // A coach is considered "unpaid" if they have a balance due (earned more than paid)
     $unpaid_counts[$tab] = 0;
     foreach ($coach_data as $uid => $data) {
-        // Only count if they have earnings and are not paid
-        if ($data['total_pay'] > 0 && !isset($paid_records[$uid])) {
+        $total_paid = isset($paid_records[$uid]) ? $paid_records[$uid]['total_paid'] : 0;
+        $balance_due = $data['total_pay'] - $total_paid;
+        // Only count if they have a positive balance due
+        if ($balance_due > 0.01) { // Use 0.01 to avoid floating point issues
             $unpaid_counts[$tab]++;
         }
     }
@@ -397,19 +415,21 @@ if ($tab === 'history') {
 // Calculate totals (only for coaches in the current filtered view)
 $total_owed = 0;
 $total_paid = 0;
+$total_balance = 0;
 foreach ($coach_data as $uid => $cd) {
     $total_owed += $cd['total_pay'];
-    // Only count payments for coaches in the filtered list
-    if (isset($paid_records[$uid])) {
-        $total_paid += $paid_records[$uid]['amount'];
-    }
+    $coach_paid = isset($paid_records[$uid]) ? $paid_records[$uid]['total_paid'] : 0;
+    $total_paid += $coach_paid;
+    $total_balance += ($cd['total_pay'] - $coach_paid);
 }
 
 // Page setup
 $pageTitle = 'Coach Payments | GB Scheduler';
 $extraHead = <<<HTML
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 HTML;
 
 $extraCss = <<<CSS
@@ -557,17 +577,19 @@ $extraCss = <<<CSS
         text-align: left;
     }
 
-    /* Column widths */
-    .payment-table th:nth-child(1) { width: 14%; }
-    .payment-table th:nth-child(2) { width: 5%; }
-    .payment-table th:nth-child(3) { width: 9%; }
-    .payment-table th:nth-child(4) { width: 9%; }
-    .payment-table th:nth-child(5) { width: 9%; }
-    .payment-table th:nth-child(6) { width: 11%; }
-    .payment-table th:nth-child(7) { width: 11%; }
-    .payment-table th:nth-child(8) { width: 10%; }
-    .payment-table th:nth-child(9) { width: 10%; }
-    .payment-table th:nth-child(10) { width: 12%; }
+    /* Column widths - updated for new columns */
+    .payment-table th:nth-child(1) { width: 12%; }  /* Coach */
+    .payment-table th:nth-child(2) { width: 5%; }   /* Classes */
+    .payment-table th:nth-child(3) { width: 8%; }   /* Regular */
+    .payment-table th:nth-child(4) { width: 8%; }   /* Private */
+    .payment-table th:nth-child(5) { width: 8%; }   /* Salary */
+    .payment-table th:nth-child(6) { width: 9%; }   /* Commission */
+    .payment-table th:nth-child(7) { width: 8%; }   /* Deduction */
+    .payment-table th:nth-child(8) { width: 9%; }   /* Total Owed */
+    .payment-table th:nth-child(9) { width: 8%; }   /* Total Paid */
+    .payment-table th:nth-child(10) { width: 8%; }  /* Balance Due */
+    .payment-table th:nth-child(11) { width: 9%; }  /* Status */
+    .payment-table th:nth-child(12) { width: 8%; }  /* Action */
 
     .text-danger { color: #dc3545; }
 
@@ -594,9 +616,14 @@ $extraCss = <<<CSS
         color: #155724;
     }
 
-    .status-unpaid {
+    .status-partial {
         background: #fff3cd;
         color: #856404;
+    }
+
+    .status-unpaid {
+        background: #f8d7da;
+        color: #721c24;
     }
 
     .text-right { text-align: right; }
@@ -846,14 +873,22 @@ require_once 'includes/header.php';
                     <th>Commission</th>
                     <th>Deduction</th>
                     <th>Total Owed</th>
+                    <th>Total Paid</th>
+                    <th>Balance Due</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($coach_data as $uid => $data):
-                    if ($data['total_pay'] == 0 && !isset($paid_records[$uid])) continue;
-                    $is_paid = isset($paid_records[$uid]);
+                    $total_paid = isset($paid_records[$uid]) ? $paid_records[$uid]['total_paid'] : 0;
+                    $balance_due = $data['total_pay'] - $total_paid;
+                    
+                    // Skip if no activity at all
+                    if ($data['total_pay'] == 0 && $total_paid == 0) continue;
+                    
+                    $is_paid = $total_paid > 0;
+                    $is_fully_paid = $balance_due < 0.01; // Fully paid (accounting for floating point)
                     $payment = $paid_records[$uid] ?? null;
                     $has_commission = !empty($data['info']['commission_tiers']);
                 ?>
@@ -884,10 +919,20 @@ require_once 'includes/header.php';
                             </button>
                         </td>
                         <td class="font-bold text-success">$<?= number_format($data['total_pay'], 2) ?></td>
+                        <td class="font-bold" style="color: #28a745;">
+                            <?= $total_paid > 0 ? '$' . number_format($total_paid, 2) : '-' ?>
+                        </td>
+                        <td class="font-bold" style="color: <?= $balance_due > 0.01 ? '#dc3545' : '#28a745' ?>;">
+                            $<?= number_format($balance_due, 2) ?>
+                        </td>
                         <td>
-                            <?php if ($is_paid): ?>
+                            <?php if ($is_fully_paid): ?>
                                 <span class="status-badge status-paid">
-                                    <i class="fas fa-check"></i> Paid <?= date('M d', strtotime($payment['payment_date'])) ?>
+                                    <i class="fas fa-check-circle"></i> Paid <?= date('M d', strtotime($payment['last_payment_date'])) ?>
+                                </span>
+                            <?php elseif ($is_paid): ?>
+                                <span class="status-badge status-partial">
+                                    <i class="fas fa-exclamation-circle"></i> Partial
                                 </span>
                             <?php else: ?>
                                 <span class="status-badge status-unpaid">
@@ -896,17 +941,19 @@ require_once 'includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($is_paid): ?>
-                                <form method="POST" style="display:inline;" onsubmit="return confirm('Remove this payment record?');">
-                                    <input type="hidden" name="action" value="delete_payment">
-                                    <input type="hidden" name="payment_id" value="<?= $payment['id'] ?>">
-                                    <button type="submit" class="btn-view" title="Remove payment">
+                            <?php if ($is_fully_paid): ?>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('Remove payment record for this coach? This will delete ALL payments for this period.');">
+                                    <input type="hidden" name="action" value="delete_all_payments">
+                                    <input type="hidden" name="user_id" value="<?= $uid ?>">
+                                    <input type="hidden" name="period_start" value="<?= $default_start ?>">
+                                    <input type="hidden" name="period_end" value="<?= $default_end ?>">
+                                    <button type="submit" class="btn-view" title="Remove all payments">
                                         <i class="fas fa-undo"></i> Undo
                                     </button>
                                 </form>
                             <?php else: ?>
-                                <button type="button" class="btn-pay" onclick="openPayModal(<?= $uid ?>, '<?= e($data['info']['name']) ?>', <?= $data['total_pay'] ?>)">
-                                    <i class="fas fa-check"></i> Mark Paid
+                                <button type="button" class="btn-pay" onclick="openPayModal(<?= $uid ?>, '<?= e($data['info']['name']) ?>', <?= $balance_due ?>)">
+                                    <i class="fas fa-check"></i> <?= $is_paid ? 'Pay Balance' : 'Mark Paid' ?>
                                 </button>
                             <?php endif; ?>
                         </td>
@@ -1159,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const startInput = document.getElementById('start_date');
     const endInput = document.getElementById('end_date');
     const paymentDateInput = document.getElementById('modal_payment_date');
+    const currentTab = '<?= $tab ?>';
 
     function formatDate(date) {
         const year = date.getFullYear();
@@ -1227,31 +1275,78 @@ document.addEventListener('DOMContentLoaded', function() {
         return presetContainer;
     }
 
-    const fpConfig = {
-        dateFormat: 'Y-m-d',
-        locale: { firstDayOfWeek: 0 },
-        onReady: function(selectedDates, dateStr, instance) {
-            instance.calendarContainer.appendChild(createPresetButtons(instance));
-        }
-    };
-
-    const startPicker = flatpickr(startInput, {
-        ...fpConfig,
-        onChange: function(selectedDates) {
-            if (selectedDates[0]) {
-                endPicker.set('minDate', selectedDates[0]);
+    // Use monthSelect plugin for monthly tab, regular datepicker for others
+    if (currentTab === 'monthly') {
+        // Month picker for monthly tab
+        const startPicker = flatpickr(startInput, {
+            plugins: [
+                new monthSelectPlugin({
+                    shorthand: false,
+                    dateFormat: "Y-m-d",
+                    altFormat: "F Y"
+                })
+            ],
+            onChange: function(selectedDates) {
+                if (selectedDates[0]) {
+                    // Set to first day of month
+                    const date = new Date(selectedDates[0]);
+                    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+                    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                    
+                    startPicker.setDate(firstDay, false);
+                    endPicker.setDate(lastDay, true);
+                }
             }
-        }
-    });
+        });
 
-    const endPicker = flatpickr(endInput, {
-        ...fpConfig,
-        onChange: function(selectedDates) {
-            if (selectedDates[0]) {
-                startPicker.set('maxDate', selectedDates[0]);
+        const endPicker = flatpickr(endInput, {
+            plugins: [
+                new monthSelectPlugin({
+                    shorthand: false,
+                    dateFormat: "Y-m-d",
+                    altFormat: "F Y"
+                })
+            ],
+            onChange: function(selectedDates) {
+                if (selectedDates[0]) {
+                    // Set to last day of month
+                    const date = new Date(selectedDates[0]);
+                    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+                    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                    
+                    startPicker.setDate(firstDay, true);
+                    endPicker.setDate(lastDay, false);
+                }
             }
-        }
-    });
+        });
+    } else {
+        // Regular date picker for weekly/biweekly/history tabs
+        const fpConfig = {
+            dateFormat: 'Y-m-d',
+            locale: { firstDayOfWeek: 0 },
+            onReady: function(selectedDates, dateStr, instance) {
+                instance.calendarContainer.appendChild(createPresetButtons(instance));
+            }
+        };
+
+        const startPicker = flatpickr(startInput, {
+            ...fpConfig,
+            onChange: function(selectedDates) {
+                if (selectedDates[0]) {
+                    endPicker.set('minDate', selectedDates[0]);
+                }
+            }
+        });
+
+        const endPicker = flatpickr(endInput, {
+            ...fpConfig,
+            onChange: function(selectedDates) {
+                if (selectedDates[0]) {
+                    startPicker.set('maxDate', selectedDates[0]);
+                }
+            }
+        });
+    }
 
     // Payment date picker (simple, no presets)
     flatpickr(paymentDateInput, {
