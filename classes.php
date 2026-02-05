@@ -580,7 +580,7 @@ require_once 'includes/header.php';
     </script>
 
     <div class="top-bar">
-        <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
         <h2 style="margin:0; color:#2c3e50;">Manage Classes</h2>
         <div class="toggle-container">
             <?php if ($show_inactive): ?>

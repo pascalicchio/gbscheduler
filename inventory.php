@@ -378,7 +378,7 @@ require_once 'includes/header.php';
 ?>
 
 <div class="top-bar">
-    <a href="dashboard.php" class="nav-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+    <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
     <h2 class="page-title"><i class="fas fa-boxes"></i> Inventory Management</h2>
 </div>
 
