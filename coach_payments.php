@@ -360,6 +360,16 @@ if ($tab !== 'history') {
     foreach ($paid_check->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $paid_records[$p['user_id']] = $p;
     }
+
+    // Recalculate unpaid count for current tab based on coaches with actual earnings
+    // This ensures badge matches the table (only counting coaches with total_pay > 0)
+    $unpaid_counts[$tab] = 0;
+    foreach ($coach_data as $uid => $data) {
+        // Only count if they have earnings and are not paid
+        if ($data['total_pay'] > 0 && !isset($paid_records[$uid])) {
+            $unpaid_counts[$tab]++;
+        }
+    }
 }
 
 // For history tab, get payment records
