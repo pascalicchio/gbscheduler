@@ -10,32 +10,39 @@ $tab = $_GET['tab'] ?? 'weekly';
 $valid_tabs = ['weekly', 'biweekly', 'monthly', 'history'];
 if (!in_array($tab, $valid_tabs)) $tab = 'weekly';
 
-// Calculate default date ranges based on tab
+// Calculate ALL period dates ONCE (used for both page defaults and badge counting)
 $today = new DateTime();
 
+// Weekly period (Sunday to Saturday)
+$day_of_week = (int)$today->format('w');
+$weekly_period_start = (clone $today)->modify("-{$day_of_week} days")->format('Y-m-d');
+$weekly_period_end = (clone $today)->modify("-{$day_of_week} days")->modify('+6 days')->format('Y-m-d');
+
+// Biweekly period
+$reference = new DateTime('2024-01-07'); // A known Sunday
+$diff = $today->diff($reference)->days;
+$weeks_since = floor($diff / 14) * 14;
+$biweekly_start_obj = (clone $reference)->modify("+{$weeks_since} days");
+if ($biweekly_start_obj > $today) {
+    $biweekly_start_obj->modify('-14 days');
+}
+$biweekly_period_start = $biweekly_start_obj->format('Y-m-d');
+$biweekly_period_end = (clone $biweekly_start_obj)->modify('+13 days')->format('Y-m-d');
+
+// Monthly period
+$monthly_period_start = $today->format('Y-m-01');
+$monthly_period_end = $today->format('Y-m-t');
+
+// Set defaults based on current tab
 if ($tab === 'weekly') {
-    // Current week (Sunday to Saturday)
-    $day_of_week = (int)$today->format('w');
-    $week_start = (clone $today)->modify("-{$day_of_week} days");
-    $week_end = (clone $week_start)->modify('+6 days');
-    $default_start = $week_start->format('Y-m-d');
-    $default_end = $week_end->format('Y-m-d');
+    $default_start = $weekly_period_start;
+    $default_end = $weekly_period_end;
 } elseif ($tab === 'biweekly') {
-    // Current 2-week period (starting from a reference Sunday)
-    $reference = new DateTime('2024-01-07'); // A known Sunday
-    $diff = $today->diff($reference)->days;
-    $weeks_since = floor($diff / 14) * 14;
-    $period_start = (clone $reference)->modify("+{$weeks_since} days");
-    if ($period_start > $today) {
-        $period_start->modify('-14 days');
-    }
-    $period_end = (clone $period_start)->modify('+13 days');
-    $default_start = $period_start->format('Y-m-d');
-    $default_end = $period_end->format('Y-m-d');
+    $default_start = $biweekly_period_start;
+    $default_end = $biweekly_period_end;
 } elseif ($tab === 'monthly') {
-    // Current month
-    $default_start = $today->format('Y-m-01');
-    $default_end = $today->format('Y-m-t');
+    $default_start = $monthly_period_start;
+    $default_end = $monthly_period_end;
 } else {
     // History - last 3 months
     $default_start = (clone $today)->modify('-3 months')->format('Y-m-01');
@@ -146,29 +153,7 @@ $all_coaches = $pdo->query("SELECT id, name FROM users ORDER BY name ASC")->fetc
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Get counts of unpaid users for badge counters on tabs
-// Calculate default periods for each frequency
-$today_calc = new DateTime();
-
-// Weekly period
-$day_of_week_calc = (int)$today_calc->format('w');
-$week_start_calc = (clone $today_calc)->modify("-{$day_of_week_calc} days")->format('Y-m-d');
-$week_end_calc = (clone $today_calc)->modify("-{$day_of_week_calc} days")->modify('+6 days')->format('Y-m-d');
-
-// Biweekly period
-$reference_calc = new DateTime('2024-01-07');
-$diff_calc = $today_calc->diff($reference_calc)->days;
-$weeks_since_calc = floor($diff_calc / 14) * 14;
-$biweekly_start_calc = (clone $reference_calc)->modify("+{$weeks_since_calc} days");
-if ($biweekly_start_calc > $today_calc) {
-    $biweekly_start_calc->modify('-14 days');
-}
-$biweekly_start_date = $biweekly_start_calc->format('Y-m-d');
-$biweekly_end_date = (clone $biweekly_start_calc)->modify('+13 days')->format('Y-m-d');
-
-// Monthly period
-$monthly_start_date = $today_calc->format('Y-m-01');
-$monthly_end_date = $today_calc->format('Y-m-t');
-
+// Uses the same period dates calculated at the top of the file
 $unpaid_counts = [
     'weekly' => 0,
     'biweekly' => 0,
@@ -177,9 +162,9 @@ $unpaid_counts = [
 
 // Count unpaid users for each frequency (filtered by location if selected)
 foreach ([
-    'weekly' => [$week_start_calc, $week_end_calc],
-    'biweekly' => [$biweekly_start_date, $biweekly_end_date],
-    'monthly' => [$monthly_start_date, $monthly_end_date]
+    'weekly' => [$weekly_period_start, $weekly_period_end],
+    'biweekly' => [$biweekly_period_start, $biweekly_period_end],
+    'monthly' => [$monthly_period_start, $monthly_period_end]
 ] as $freq => $dates) {
     list($period_start, $period_end) = $dates;
 
