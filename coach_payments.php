@@ -952,8 +952,8 @@ require_once 'includes/header.php';
                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Remove payment record for this coach? This will delete ALL payments for this period.');">
                                     <input type="hidden" name="action" value="delete_all_payments">
                                     <input type="hidden" name="user_id" value="<?= $uid ?>">
-                                    <input type="hidden" name="period_start" value="<?= $default_start ?>">
-                                    <input type="hidden" name="period_end" value="<?= $default_end ?>">
+                                    <input type="hidden" name="period_start" value="<?= $start_date ?>">
+                                    <input type="hidden" name="period_end" value="<?= $end_date ?>">
                                     <button type="submit" class="btn-view" title="Remove all payments">
                                         <i class="fas fa-undo"></i> Undo
                                     </button>
@@ -1030,8 +1030,8 @@ require_once 'includes/header.php';
         <form method="POST">
             <input type="hidden" name="action" value="mark_paid">
             <input type="hidden" name="user_id" id="modal_user_id">
-            <input type="hidden" name="period_start" value="<?= $default_start ?>">
-            <input type="hidden" name="period_end" value="<?= $default_end ?>">
+            <input type="hidden" name="period_start" value="<?= $start_date ?>">
+            <input type="hidden" name="period_end" value="<?= $end_date ?>">
 
             <div class="modal-body">
                 <div class="form-group">
@@ -1040,7 +1040,7 @@ require_once 'includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Period</label>
-                    <input type="text" value="<?= date('M d', strtotime($default_start)) ?> - <?= date('M d', strtotime($default_end)) ?>" readonly style="background:#f8f9fa;">
+                    <input type="text" value="<?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?>" readonly style="background:#f8f9fa;">
                 </div>
                 <div class="form-group">
                     <label>Amount ($)</label>
