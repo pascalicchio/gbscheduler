@@ -32,7 +32,7 @@ foreach ($coaches as $c) {
 
 // Regular Classes Logic
 $sql_reg = "
-    SELECT ea.user_id, ea.class_date, ea.position, ct.class_name, ct.start_time, ct.end_time, l.name as loc_name, l.id as location_id,
+    SELECT ea.user_id, ea.class_date, ea.position, ct.class_name, ct.martial_art, ct.start_time, ct.end_time, l.name as loc_name, l.id as location_id,
            TIMESTAMPDIFF(MINUTE, ct.start_time, ct.end_time) / 60 as hours
     FROM event_assignments ea
     JOIN class_templates ct ON ea.template_id = ct.id
@@ -68,7 +68,7 @@ foreach ($reg_rows as $row) {
         'type' => 'regular',
         'date' => $row['class_date'],
         'time' => date('g:i A', strtotime($row['start_time'])),
-        'desc' => $row['class_name'],
+        'desc' => strtoupper($row['martial_art']) . ' - ' . $row['class_name'],
         'location' => $row['loc_name'],
         'location_id' => $row['location_id'],
         'detail' => ucfirst($row['position']),
