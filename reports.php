@@ -26,7 +26,7 @@ $coach = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // 2. Fetch Regular Classes
 $sql_regular = "
-    SELECT ea.class_date, ea.position, ct.class_name, ct.start_time, ct.end_time, l.id as location_id, l.name as location_name,
+    SELECT ea.class_date, ea.position, ct.class_name, ct.martial_art, ct.start_time, ct.end_time, l.id as location_id, l.name as location_name,
            TIMESTAMPDIFF(MINUTE, ct.start_time, ct.end_time) / 60 as hours
     FROM event_assignments ea
     JOIN class_templates ct ON ea.template_id = ct.id
@@ -973,7 +973,7 @@ require_once 'includes/header.php';
                 'type' => 'regular',
                 'date' => $rc['class_date'],
                 'time' => date('g:i A', strtotime($rc['start_time'])),
-                'desc' => $rc['class_name'],
+                'desc' => strtoupper($rc['martial_art']) . ' - ' . $rc['class_name'],
                 'location' => $rc['location_name'],
                 'pay' => $pay
             ];
