@@ -254,6 +254,7 @@ $extraCss = <<<CSS
             display: flex;
             gap: 10px;
             align-items: stretch;
+            margin-top: 24px;
         }
 
         .button-row .view-toggle {
