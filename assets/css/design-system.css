@@ -1,0 +1,366 @@
+/**
+ * GB Scheduler - Design System
+ * Modern gradient-based design with thin/bold font contrast
+ */
+
+/* ========================================
+   CSS Variables - Design Tokens
+   ======================================== */
+:root {
+    /* Gradient Colors */
+    --gradient-primary: linear-gradient(90deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    --gradient-primary-hover: linear-gradient(90deg, rgb(0, 181, 235), rgb(126, 234, 137));
+    --gradient-secondary: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    --gradient-accent: linear-gradient(45deg, rgb(0, 201, 255), rgb(146, 254, 157));
+
+    /* Solid Colors (derived from gradient) */
+    --color-primary: rgb(0, 201, 255);
+    --color-primary-dark: rgb(0, 181, 235);
+    --color-accent: rgb(146, 254, 157);
+    --color-accent-dark: rgb(126, 234, 137);
+
+    /* Neutral Colors */
+    --color-dark: #2c3e50;
+    --color-gray-900: #1a202c;
+    --color-gray-800: #2d3748;
+    --color-gray-700: #4a5568;
+    --color-gray-600: #718096;
+    --color-gray-500: #a0aec0;
+    --color-gray-400: #cbd5e0;
+    --color-gray-300: #e2e8f0;
+    --color-gray-200: #edf2f7;
+    --color-gray-100: #f7fafc;
+
+    /* Background Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafb;
+    --bg-tertiary: #f0f4f8;
+
+    /* Text Colors */
+    --text-primary: #2c3e50;
+    --text-secondary: #6c757d;
+    --text-light: #a0aec0;
+    --text-white: #ffffff;
+
+    /* Shadows */
+    --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 30px rgba(0, 201, 255, 0.15);
+    --shadow-xl: 0 20px 40px rgba(0, 201, 255, 0.2);
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Spacing (complement Tailwind) */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Typography - Font Weights */
+    --font-thin: 100;
+    --font-extralight: 200;
+    --font-light: 300;
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+    --font-black: 900;
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 350ms ease;
+}
+
+/* ========================================
+   Typography - Thin/Bold Contrast
+   ======================================== */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: var(--font-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings - Bold & Impactful */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-bold);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2.5rem; font-weight: var(--font-extrabold); }
+h2 { font-size: 2rem; font-weight: var(--font-bold); }
+h3 { font-size: 1.5rem; font-weight: var(--font-bold); }
+h4 { font-size: 1.25rem; font-weight: var(--font-semibold); }
+h5 { font-size: 1.125rem; font-weight: var(--font-semibold); }
+h6 { font-size: 1rem; font-weight: var(--font-semibold); }
+
+/* Body Text - Light & Readable */
+p, span, div {
+    font-weight: var(--font-normal);
+    line-height: 1.6;
+}
+
+/* Utility Classes for Font Weights */
+.font-thin { font-weight: var(--font-thin); }
+.font-extralight { font-weight: var(--font-extralight); }
+.font-light { font-weight: var(--font-light); }
+.font-normal { font-weight: var(--font-normal); }
+.font-medium { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+.font-bold { font-weight: var(--font-bold); }
+.font-extrabold { font-weight: var(--font-extrabold); }
+.font-black { font-weight: var(--font-black); }
+
+/* Text Size Utilities with Weight Pairing */
+.text-display {
+    font-size: 3rem;
+    font-weight: var(--font-black);
+    letter-spacing: -0.03em;
+}
+
+.text-hero {
+    font-size: 2.5rem;
+    font-weight: var(--font-extrabold);
+    letter-spacing: -0.02em;
+}
+
+.text-subtitle {
+    font-size: 1.125rem;
+    font-weight: var(--font-light);
+    color: var(--text-secondary);
+}
+
+.text-label {
+    font-size: 0.875rem;
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ========================================
+   Gradient Components
+   ======================================== */
+
+/* Gradient Buttons */
+.btn-gradient {
+    background-image: var(--gradient-primary);
+    color: white;
+    font-weight: var(--font-bold);
+    padding: 14px 28px;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-lg);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.95rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-gradient::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-gradient:hover {
+    background-image: var(--gradient-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.btn-gradient:hover::before {
+    left: 100%;
+}
+
+.btn-gradient:active {
+    transform: translateY(0);
+}
+
+/* Gradient Text */
+.text-gradient {
+    background-image: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: var(--font-extrabold);
+}
+
+/* Gradient Borders */
+.border-gradient {
+    border: 2px solid transparent;
+    background-image: linear-gradient(white, white), var(--gradient-primary);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+/* Gradient Background Cards */
+.card-gradient {
+    background: linear-gradient(135deg, rgba(0, 201, 255, 0.05), rgba(146, 254, 157, 0.05));
+    border: 1px solid rgba(0, 201, 255, 0.2);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+/* Gradient Badge/Tag */
+.badge-gradient {
+    background-image: var(--gradient-primary);
+    color: white;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ========================================
+   Accent Dividers
+   ======================================== */
+.divider-gradient {
+    height: 3px;
+    background-image: var(--gradient-primary);
+    border: none;
+    margin: var(--spacing-lg) 0;
+    border-radius: var(--radius-full);
+}
+
+/* ========================================
+   Icon Styles with Gradients
+   ======================================== */
+.icon-gradient {
+    width: 48px;
+    height: 48px;
+    background-image: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    box-shadow: var(--shadow-lg);
+}
+
+/* ========================================
+   Form Elements - Modern Gradient Accents
+   ======================================== */
+.input-gradient:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.15);
+    outline: none;
+}
+
+.checkbox-gradient:checked {
+    background-image: var(--gradient-primary);
+    border-color: var(--color-primary);
+}
+
+/* ========================================
+   Card Components
+   ======================================== */
+.card-modern {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--color-gray-200);
+    transition: all var(--transition-base);
+}
+
+.card-modern:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   Navigation & Header Accents
+   ======================================== */
+.nav-gradient-accent {
+    position: relative;
+}
+
+.nav-gradient-accent::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-image: var(--gradient-primary);
+    transform: scaleX(0);
+    transition: transform var(--transition-base);
+}
+
+.nav-gradient-accent:hover::after,
+.nav-gradient-accent.active::after {
+    transform: scaleX(1);
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+@keyframes pulse-gradient {
+    0%, 100% {
+        box-shadow: var(--shadow-lg);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: var(--shadow-xl);
+        transform: scale(1.02);
+    }
+}
+
+.pulse-gradient {
+    animation: pulse-gradient 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+
+/* ========================================
+   Responsive Typography
+   ======================================== */
+@media (max-width: 768px) {
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.25rem; }
+
+    .text-display { font-size: 2.25rem; }
+    .text-hero { font-size: 2rem; }
+}
+
+/* ========================================
+   Dark Mode Support (Future)
+   ======================================== */
+@media (prefers-color-scheme: dark) {
+    /* Dark mode variables can be added here */
+}

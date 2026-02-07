@@ -99,6 +99,50 @@ if ($is_admin) {
     }
 }
 
+// Calculate last week's payroll for comparison
+$last_week_payroll = 0;
+if ($is_admin) {
+    $last_week_start = date('Y-m-d', strtotime($start_of_week . ' - 7 days'));
+    $last_week_end = date('Y-m-d', strtotime($end_of_week . ' - 7 days'));
+
+    try {
+        $sql = "SELECT ea.position, u.rate_head_coach, u.rate_helper
+                FROM event_assignments ea
+                JOIN users u ON ea.user_id = u.id
+                JOIN class_templates ct ON ea.template_id = ct.id
+                WHERE ea.class_date BETWEEN :start_date AND :end_date";
+
+        $params = [
+            'start_date' => $last_week_start,
+            'end_date' => $last_week_end
+        ];
+
+        if ($filter_location_id !== '0') {
+            $sql .= " AND ct.location_id = :location_id";
+            $params['location_id'] = $filter_location_id;
+        }
+
+        if ($martial_art_filter !== 'all') {
+            $sql .= " AND ct.martial_art = :martial_art";
+            $params['martial_art'] = $martial_art_filter;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($assignments as $a) {
+            if ($a['position'] === 'head') {
+                $last_week_payroll += (float)$a['rate_head_coach'];
+            } else {
+                $last_week_payroll += (float)$a['rate_helper'];
+            }
+        }
+    } catch (PDOException $e) {
+        // Silently fail
+    }
+}
+
 // --- DATA FETCHING ---
 function get_schedule_data($pdo, $location_id, $start_date, $end_date, $user_role, $user_id, $martial_art_filter)
 {
@@ -243,81 +287,179 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 <head>
     <title>GB Schedule</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <style>
         :root {
-            --primary-color: #007bff;
-            --primary-dark: #0056b3;
+            /* Use design system gradient colors */
+            --gradient-primary: linear-gradient(90deg, rgb(0, 201, 255), rgb(146, 254, 157));
+            --gradient-hover: linear-gradient(90deg, rgb(0, 181, 235), rgb(126, 234, 137));
+            --primary-color: rgb(0, 201, 255);
+            --primary-dark: rgb(0, 181, 235);
             --secondary-dark: #2c3e50;
-            --bg-color: #f4f6f9;
+            --bg-color: #f8fafb;
             --sidebar-color: #ffffff;
-            --text-color: #333;
+            --text-color: #2c3e50;
         }
 
         body {
             display: flex;
-            font-family: sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             margin: 0;
             background: var(--bg-color);
             color: var(--text-color);
             height: 100vh;
             overflow: hidden;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
         }
 
         #sidebar {
             width: 320px;
-            padding: 20px;
+            padding: 24px;
             background: var(--sidebar-color);
-            border-right: 1px solid #e1e4e8;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            border-right: 1px solid rgba(0, 201, 255, 0.1);
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
             overflow-y: auto;
             flex-shrink: 0;
             z-index: 20;
             transition: all 0.3s ease;
+            position: relative;
+        }
+
+        /* Gradient accent bar on sidebar */
+        #sidebar::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-image: var(--gradient-primary);
         }
 
         .filter-box {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.03), rgba(146, 254, 157, 0.03));
+            border: 2px solid rgba(0, 201, 255, 0.15);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
 
-        /* Payroll Summary Box - Compact Design */
+        /* Payroll Summary Box - Gradient Design */
         .payroll-box {
-            background: #2c3e50;
-            border-radius: 6px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
+            background-image: var(--gradient-primary);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 6px 20px rgba(0, 201, 255, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .payroll-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1));
+            pointer-events: none;
         }
 
         .payroll-label {
-            font-size: 0.8em;
-            color: rgba(255,255,255,0.7);
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.9);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .payroll-label i {
-            margin-right: 5px;
-            color: #28a745;
+            margin-right: 8px;
+            color: white;
+            opacity: 0.9;
         }
 
         .payroll-value {
             text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            min-width: 150px;
         }
 
         .payroll-amount {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2ecc71;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .payroll-comparison {
+            font-size: 0.8rem;
+            color: white;
+            margin-top: 4px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+            white-space: nowrap;
+        }
+
+        .payroll-comparison i {
+            font-size: 0.75rem;
+        }
+
+        .payroll-up {
+            color: white;
+        }
+
+        .payroll-up i {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+            padding: 4px;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payroll-down {
+            color: white;
+        }
+
+        .payroll-down i {
+            color: #51cf66;
+            background: rgba(81, 207, 102, 0.2);
+            padding: 4px;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .payroll-count {
@@ -326,21 +468,37 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         .filter-box label {
-            font-size: 0.85em;
-            font-weight: bold;
-            color: #555;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--secondary-dark);
             text-transform: uppercase;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            letter-spacing: 0.05em;
         }
 
         select {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 10px;
+            padding: 12px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 12px;
             background: white;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--secondary-dark);
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+
+        select:hover {
+            border-color: rgba(0, 201, 255, 0.3);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
         }
 
         /* Draggable Styles */
@@ -352,14 +510,15 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 
         .coach-draggable {
             border: 1px solid #ccc;
-            padding: 8px;
-            margin-bottom: 5px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
             cursor: grab;
-            font-size: 0.9em;
-            border-radius: 4px;
+            font-size: 0.9rem;
+            border-radius: 8px;
             transition: all 0.2s;
             background: white;
-            text-align: center;
+            text-align: left;
+            font-weight: 500;
         }
 
         .coach-draggable:hover {
@@ -372,8 +531,9 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         .coach-helper {
-            border: 1px dashed #ccc;
-            background: #f0f0f0;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            opacity: 0.85;
         }
 
         #calendar-container {
@@ -387,28 +547,65 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             background: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 20px 28px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 201, 255, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Gradient accent on header */
+        .header-row::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: 6px;
+            right: 0;
+            width: calc(100% - 10px);
+            height: 3px;
+            background-image: var(--gradient-primary);
+            border-radius: 16px 16px 0 0;
         }
 
         .nav-btn {
             text-decoration: none;
             color: var(--secondary-dark);
-            font-weight: bold;
-            padding: 8px 16px;
-            border-radius: 4px;
-            background: #f0f0f0;
-            transition: background 0.2s;
-            border: none;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: #f5f7fa;
+            transition: all 0.25s ease;
+            border: 2px solid transparent;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .nav-btn:hover {
-            background: #e0e0e0;
+            background: #e8ecf2;
+            border-color: rgba(0, 201, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Gradient buttons for primary actions */
+        .nav-btn.btn-primary {
+            background-image: var(--gradient-primary);
+            color: white;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 201, 255, 0.25);
+            border: none;
+        }
+
+        .nav-btn.btn-primary:hover {
+            background-image: var(--gradient-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 201, 255, 0.35);
         }
 
         /* ADDED: Lock States */
@@ -424,11 +621,18 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             margin-left: 15px;
         }
 
+        /* Locked mode - gray for admins only, coaches see full color */
+        <?php if ($is_admin): ?>
         .locked-mode {
             pointer-events: none;
             opacity: 0.6;
             filter: grayscale(80%);
         }
+        <?php else: ?>
+        .locked-mode {
+            pointer-events: none;
+        }
+        <?php endif; ?>
 
         #custom-schedule {
             width: 100%;
@@ -619,15 +823,44 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         .sidebar-link {
             color: var(--secondary-dark);
             text-decoration: none;
-            display: block;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
-            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin: 4px 0;
+            border-radius: 10px;
+            transition: all 0.25s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-link::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background-image: var(--gradient-primary);
+            transform: scaleY(0);
+            transition: transform 0.25s ease;
         }
 
         .sidebar-link:hover {
             color: var(--primary-color);
-            padding-left: 5px;
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.05), rgba(146, 254, 157, 0.05));
+            transform: translateX(4px);
+        }
+
+        .sidebar-link:hover::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar-link i {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem;
         }
 
         body.screenshot-mode {
@@ -659,18 +892,20 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
         }
 
         /* Clone Dropdown Styles */
+        .clone-dropdown {
+            position: relative;
+        }
+
         .clone-dropdown-menu {
             display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
+            position: fixed;
             background: white;
-            border: 1px solid #e1e4e8;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 2px solid rgba(0, 201, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.3);
             min-width: 280px;
-            z-index: 1000;
-            margin-top: 5px;
+            z-index: 99999 !important;
+            margin-top: 8px;
             overflow: hidden;
         }
 
@@ -706,25 +941,243 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             margin-top: 4px;
             margin-left: 26px;
         }
+
+        /* Alpine.js Loading States */
+        [x-cloak] { display: none !important; }
+
+        .filter-loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .filter-loading-indicator {
+            margin-top: 12px;
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.1), rgba(146, 254, 157, 0.1));
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .filter-loading-indicator i {
+            margin-right: 8px;
+        }
+
+        /* ============================================
+           Alpine.js Modal Styles
+           ============================================ */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            border: 2px solid rgba(0, 201, 255, 0.2);
+        }
+
+        .modal-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-icon.icon-confirm {
+            background-image: var(--gradient-primary);
+            color: white;
+        }
+
+        .modal-icon.icon-warning {
+            background: linear-gradient(135deg, #ffc107, #ff9800);
+            color: white;
+        }
+
+        .modal-icon.icon-danger {
+            background: linear-gradient(135deg, #f44336, #e91e63);
+            color: white;
+        }
+
+        .modal-icon.icon-success {
+            background: linear-gradient(135deg, #4caf50, #8bc34a);
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--secondary-dark);
+            margin: 0 0 12px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .modal-message {
+            font-size: 1rem;
+            color: #666;
+            margin: 0 0 28px 0;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: none;
+            min-width: 120px;
+        }
+
+        .modal-btn-cancel {
+            background: #f5f7fa;
+            color: var(--secondary-dark);
+            border: 2px solid #e8ecf2;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #e8ecf2;
+            transform: translateY(-1px);
+        }
+
+        .modal-btn-confirm {
+            background-image: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 6px 20px rgba(0, 201, 255, 0.3);
+        }
+
+        .modal-btn-confirm:hover {
+            background-image: var(--gradient-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 201, 255, 0.4);
+        }
+
+        .modal-btn-confirm:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                padding: 24px;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .modal-btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-    <div id="sidebar">
-        <div class="filter-box">
+    <!-- Alpine.js Modal Component -->
+    <div x-data
+         x-show="$store.modal.isOpen"
+         x-cloak
+         @keydown.escape.window="$store.modal.close()"
+         class="modal-overlay"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+
+        <div class="modal-backdrop" @click="$store.modal.close()"></div>
+
+        <div class="modal-content"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform scale-90"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform scale-100"
+             x-transition:leave-end="opacity-0 transform scale-90">
+
+            <!-- Modal Icon -->
+            <div class="modal-icon" :class="$store.modal.getIconClass()">
+                <i :class="$store.modal.getIcon()"></i>
+            </div>
+
+            <!-- Modal Header -->
+            <h3 class="modal-title" x-text="$store.modal.title"></h3>
+
+            <!-- Modal Message -->
+            <p class="modal-message" x-text="$store.modal.message"></p>
+
+            <!-- Modal Actions -->
+            <div class="modal-actions">
+                <button @click="$store.modal.close()" class="modal-btn modal-btn-cancel">
+                    Cancel
+                </button>
+                <button @click="$store.modal.confirm()" class="modal-btn modal-btn-confirm">
+                    <span x-text="$store.modal.confirmText"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar" x-data="dashboardFilters()" x-cloak>
+        <div class="filter-box" :class="{ 'filter-loading': isLoading }">
             <label>Location</label>
-            <select id="loc-filter">
+            <select id="loc-filter" x-model="location" @change="applyFilters()" :disabled="isLoading">
                 <?php foreach ($locations as $l): ?>
-                    <option value="<?= $l['id'] ?>" <?= $l['id'] == $filter_location_id ? 'selected' : '' ?>><?= $l['name'] ?></option>
+                    <option value="<?= $l['id'] ?>"><?= $l['name'] ?></option>
                 <?php endforeach; ?>
             </select>
             <label>Martial Art</label>
-            <select id="art-filter">
-                <option value="bjj" <?= $martial_art_filter == 'bjj' ? 'selected' : '' ?>>BJJ</option>
-                <option value="mt" <?= $martial_art_filter == 'mt' ? 'selected' : '' ?>>Muay Thai</option>
-                <option value="mma" <?= $martial_art_filter == 'mma' ? 'selected' : '' ?>>MMA</option>
+            <select id="art-filter" x-model="martialArt" @change="applyFilters()" :disabled="isLoading">
+                <option value="bjj">BJJ</option>
+                <option value="mt">Muay Thai</option>
+                <option value="mma">MMA</option>
             </select>
+
+            <!-- Loading indicator -->
+            <div x-show="isLoading" x-transition class="filter-loading-indicator">
+                <i class="fas fa-spinner fa-spin"></i> Loading...
+            </div>
         </div>
 
         <?php if ($is_admin): ?>
@@ -735,7 +1188,9 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 </div>
                 <div class="payroll-value">
                     <div class="payroll-amount">$<span id="payroll-total">0.00</span></div>
-                    <div class="payroll-count"><span id="payroll-assignments">0</span> assignments</div>
+                    <div id="payroll-comparison" class="payroll-comparison" style="display: none;">
+                        <!-- Week-over-week comparison will be injected here -->
+                    </div>
                 </div>
             </div>
 
@@ -793,24 +1248,32 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
     <div id="calendar-container">
         <div class="header-row">
             <div>
-                <h2 style="margin:0; color:var(--secondary-dark)"><?= $current_location_name ?> Schedule - <?= $art_display ?></h2>
-                <div style="font-size:0.9em; color:#666; margin-top:5px;">Weekly View</div>
+                <h2 style="margin:0; color:var(--secondary-dark); font-weight:700; font-size:1.75rem; letter-spacing:-0.02em;">
+                    <span style="font-weight:300;"><?= $current_location_name ?></span> Schedule
+                    <span style="font-weight:800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">·</span>
+                    <span style="font-weight:700;"><?= $art_display ?></span>
+                </h2>
+                <div style="font-size:0.875rem; color:#a0aec0; margin-top:8px; font-weight:300; letter-spacing:0.01em;">Weekly View</div>
             </div>
             <div style="display:flex; align-items:center; gap:15px;">
                 <a href="<?= $base_url ?>?week_start=<?= $prev_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn"><i class="fas fa-chevron-left"></i> Prev</a>
-                <span style="font-weight:bold; font-size:1.1em; color:var(--secondary-dark)"><?= date('M d', strtotime($start_of_week)) ?> - <?= date('M d', strtotime($end_of_week)) ?></span>
+                <span style="font-weight:700; font-size:1.15rem; color:var(--secondary-dark); letter-spacing:-0.01em;">
+                    <span style="font-weight:300;"><?= date('M', strtotime($start_of_week)) ?></span> <?= date('d', strtotime($start_of_week)) ?>
+                    <span style="font-weight:300; opacity:0.5;">-</span>
+                    <span style="font-weight:300;"><?= date('M', strtotime($end_of_week)) ?></span> <?= date('d', strtotime($end_of_week)) ?>
+                </span>
                 <a href="<?= $base_url ?>?week_start=<?= $next_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn">Next <i class="fas fa-chevron-right"></i></a>
 
                 <?php if ($is_admin): ?>
 
                     <?php if ($is_locked): ?>
-                        <button id="lock-btn" onclick="toggleLock('unlock')" class="nav-btn btn-lock" title="Unlock Week"><i class="fas fa-lock"></i></button>
+                        <button id="lock-btn" onclick="showLockModal('unlock')" class="nav-btn btn-lock" title="Unlock Week"><i class="fas fa-lock"></i></button>
                     <?php else: ?>
-                        <button id="lock-btn" onclick="toggleLock('lock')" class="nav-btn btn-unlock" title="Lock Week"><i class="fas fa-lock-open"></i></button>
+                        <button id="lock-btn" onclick="showLockModal('lock')" class="nav-btn btn-unlock" title="Lock Week"><i class="fas fa-lock-open"></i></button>
                     <?php endif; ?>
 
                     <div class="clone-dropdown" style="position:relative; display:inline-block; margin-left:15px;">
-                        <button id="clone-dropdown-btn" class="nav-btn" style="background:#007bff; color:white;">
+                        <button id="clone-dropdown-btn" class="nav-btn btn-primary">
                             <i class="fas fa-copy"></i> Clone Week <i class="fas fa-caret-down" style="margin-left:5px;"></i>
                         </button>
                         <div id="clone-dropdown-menu" class="clone-dropdown-menu">
@@ -827,7 +1290,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 <?php endif; ?>
 
                 <?php if ($can_view_tools): ?>
-                    <button id="download-btn" class="nav-btn" style="background:#28a745; color:white; margin-left:10px;">
+                    <button id="download-btn" class="nav-btn btn-primary" style="margin-left:10px;">
                         <i class="fas fa-download"></i> Download
                     </button>
                 <?php endif; ?>
@@ -924,6 +1387,8 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             }
 
             // Calculate total payroll from all assignments on screen
+            const lastWeekPayroll = <?= $last_week_payroll ?>;
+
             function calculatePayroll() {
                 if (!isAdmin) return;
 
@@ -953,15 +1418,36 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 });
 
                 $('#payroll-total').text(total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-                $('#payroll-assignments').text(assignmentCount);
+
+                // Calculate week-over-week comparison
+                if (lastWeekPayroll > 0) {
+                    const diff = total - lastWeekPayroll;
+                    const percentChange = ((diff / lastWeekPayroll) * 100).toFixed(1);
+                    const isIncrease = diff > 0;
+                    const arrow = isIncrease ? 'fa-arrow-up' : 'fa-arrow-down';
+                    const colorClass = isIncrease ? 'payroll-up' : 'payroll-down';
+                    const sign = isIncrease ? '+' : '';
+
+                    const comparisonHtml = `
+                        <span class="${colorClass}">
+                            <i class="fas ${arrow}"></i>
+                            ${sign}${Math.abs(percentChange)}% vs last week
+                        </span>
+                    `;
+
+                    $('#payroll-comparison').html(comparisonHtml).show();
+                } else {
+                    $('#payroll-comparison').hide();
+                }
             }
 
             // Calculate on page load
             calculatePayroll();
 
-            $('#loc-filter, #art-filter').change(function() {
-                window.location = `dashboard.php?week_start=${weekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
-            });
+            // Filter changes now handled by Alpine.js
+            // $('#loc-filter, #art-filter').change(function() {
+            //     window.location = `dashboard.php?week_start=${weekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
+            // });
 
             $('#download-btn').click(function() {
                 // 1. Temporarily remove the fade/gray effect
@@ -1116,46 +1602,82 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                         const time = btn.data('time');
                         const className = btn.data('name');
 
-                        if (confirm(`Assign ${name} to ALL "${className}" classes at this time for the whole week?`)) {
-                            $.post('api/update_assignment.php', {
-                                action: 'bulk_assign_by_time',
-                                coach_id: cid,
-                                position: role,
-                                week_start: weekStart,
-                                class_time: time,
-                                class_name: className,
-                                location_id: locId,
-                                martial_art: artFilter
-                            }, function(res) {
-                                if (res.success) location.reload();
-                                else alert(res.message || "Failed");
-                            }, 'json');
-                        }
+                        Alpine.store('modal').open({
+                            title: 'Assign to All Week',
+                            message: `Assign ${name} as ${role} to ALL "${className}" classes at this time for the whole week?`,
+                            confirmText: 'Assign All',
+                            type: 'confirm',
+                            onConfirm: () => {
+                                $.post('api/update_assignment.php', {
+                                    action: 'bulk_assign_by_time',
+                                    coach_id: cid,
+                                    position: role,
+                                    week_start: weekStart,
+                                    class_time: time,
+                                    class_name: className,
+                                    location_id: locId,
+                                    martial_art: artFilter
+                                }, function(res) {
+                                    if (res.success) {
+                                        location.reload();
+                                    } else {
+                                        Alpine.store('modal').open({
+                                            title: 'Error',
+                                            message: res.message || 'Assignment failed',
+                                            confirmText: 'OK',
+                                            type: 'danger',
+                                            onConfirm: () => {}
+                                        });
+                                    }
+                                }, 'json');
+                            }
+                        });
                     }
                 });
 
                 $(document).on('click', '.del-btn', function(e) {
                     e.stopPropagation();
-                    if (!confirm('Remove coach?')) return;
                     const el = $(this).closest('.assignment');
                     const slot = el.closest('.slot');
-                    $.post('api/update_assignment.php', {
-                        action: 'delete_assignment',
-                        coach_id: el.data('cid'),
-                        template_id: slot.data('tid'),
-                        class_date: slot.data('date')
-                    }, function() {
-                        el.remove();
-                        calculatePayroll(); // Update payroll
+                    const coachName = el.find('.cname').text() || 'this coach';
+
+                    Alpine.store('modal').open({
+                        title: 'Remove Coach',
+                        message: `Remove ${coachName} from this class?`,
+                        confirmText: 'Remove',
+                        type: 'danger',
+                        onConfirm: () => {
+                            $.post('api/update_assignment.php', {
+                                action: 'delete_assignment',
+                                coach_id: el.data('cid'),
+                                template_id: slot.data('tid'),
+                                class_date: slot.data('date')
+                            }, function() {
+                                el.remove();
+                                calculatePayroll(); // Update payroll
+                            });
+                        }
                     });
                 });
 
             }
 
-            // Clone Dropdown Logic
+            // Clone Dropdown Logic - Move to body for proper z-index
+            const $cloneMenu = $('#clone-dropdown-menu');
+            $cloneMenu.appendTo('body'); // Move to body to escape stacking context
+
             $('#clone-dropdown-btn').click(function(e) {
                 e.stopPropagation();
-                $('#clone-dropdown-menu').toggleClass('show');
+                $cloneMenu.toggleClass('show');
+
+                // Position the fixed dropdown below the button
+                if ($cloneMenu.hasClass('show')) {
+                    const btnRect = this.getBoundingClientRect();
+                    $cloneMenu.css({
+                        top: btnRect.bottom + 8 + 'px',
+                        right: (window.innerWidth - btnRect.right) + 'px'
+                    });
+                }
             });
 
             // Close dropdown when clicking outside
@@ -1169,14 +1691,15 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             });
 
             // Handle clone options
-            $('.clone-option').click(async function() {
+            $('.clone-option').click(function() {
                 const mode = $(this).data('mode');
                 const locationName = '<?= addslashes($current_location_name) ?>';
                 const artName = '<?= $art_display ?>';
 
-                let confirmMsg, requestBody;
+                let confirmMsg, modalTitle, requestBody;
 
                 if (mode === 'current') {
+                    modalTitle = 'Clone Current View';
                     confirmMsg = `Clone only ${locationName} ${artName} schedule to next week?`;
                     requestBody = {
                         sourceWeekStart: weekStart,
@@ -1184,44 +1707,83 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                         martial_art: artFilter
                     };
                 } else {
-                    confirmMsg = `Clone schedule from ${weekStart} to next week?`;
+                    modalTitle = 'Clone Entire Schedule';
+                    confirmMsg = `Clone the entire schedule from ${weekStart} to next week? This includes all locations and martial arts.`;
                     requestBody = {
                         sourceWeekStart: weekStart
                     };
                 }
 
-                $('#clone-dropdown-menu').removeClass('show');
+                $cloneMenu.removeClass('show');
 
-                if (!confirm(confirmMsg)) return;
-
-                try {
-                    const response = await fetch('api/clone_classes.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-                    const result = await response.json();
-                    if (response.ok) {
-                        alert(`Cloned ${result.clonedCount} assignments.`);
-                        window.location = `dashboard.php?week_start=${nextWeekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
-                    } else {
-                        alert('Error: ' + result.message);
+                // Show confirmation modal
+                Alpine.store('modal').open({
+                    title: modalTitle,
+                    message: confirmMsg,
+                    confirmText: 'Clone Now',
+                    type: 'confirm',
+                    onConfirm: async () => {
+                        try {
+                            const response = await fetch('api/clone_classes.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(requestBody)
+                            });
+                            const result = await response.json();
+                            if (response.ok) {
+                                // Show success modal
+                                Alpine.store('modal').open({
+                                    title: 'Success!',
+                                    message: `Cloned ${result.clonedCount} assignments successfully.`,
+                                    confirmText: 'View Next Week',
+                                    type: 'success',
+                                    onConfirm: () => {
+                                        window.location = `dashboard.php?week_start=${nextWeekStart}&location=${$('#loc-filter').val()}&martial_art=${$('#art-filter').val()}`;
+                                    }
+                                });
+                            } else {
+                                Alpine.store('modal').open({
+                                    title: 'Error',
+                                    message: result.message || 'Failed to clone schedule.',
+                                    confirmText: 'OK',
+                                    type: 'danger',
+                                    onConfirm: () => {}
+                                });
+                            }
+                        } catch (e) {
+                            Alpine.store('modal').open({
+                                title: 'Error',
+                                message: 'Clone failed. Please try again.',
+                                confirmText: 'OK',
+                                type: 'danger',
+                                onConfirm: () => {}
+                            });
+                        }
                     }
-                } catch (e) {
-                    alert('Clone failed.');
-                }
+                });
             });
         });
+
+        // Helper to show lock/unlock modal
+        function showLockModal(action) {
+            Alpine.store('modal').open({
+                title: action === 'lock' ? 'Lock Week' : 'Unlock Week',
+                message: action === 'lock'
+                    ? 'This will prevent any changes to coach assignments for this week. Continue?'
+                    : 'This will allow coaches to be edited for this week. Continue?',
+                confirmText: action === 'lock' ? 'Lock' : 'Unlock',
+                type: 'warning',
+                onConfirm: () => toggleLock(action)
+            });
+        }
 
         // NEW: Lock Toggle Function
         function toggleLock(action) {
             const locId = '<?= $filter_location_id ?>';
             const type = '<?= $martial_art_filter ?>';
             const weekStart = '<?= $start_of_week ?>';
-
-            if (!confirm(`Are you sure you want to ${action} this week's schedule?`)) return;
 
             fetch('toggle_lock.php', {
                     method: 'POST',
@@ -1244,6 +1806,85 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                     }
                 });
         }
+
+        // ============================================
+        // Alpine.js Global Modal Store
+        // ============================================
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('modal', {
+                isOpen: false,
+                title: '',
+                message: '',
+                confirmText: 'Confirm',
+                type: 'confirm',
+                onConfirm: null,
+
+                open(options) {
+                    this.title = options.title || 'Confirm Action';
+                    this.message = options.message || 'Are you sure?';
+                    this.confirmText = options.confirmText || 'Confirm';
+                    this.type = options.type || 'confirm';
+                    this.onConfirm = options.onConfirm || null;
+                    this.isOpen = true;
+                    document.body.style.overflow = 'hidden';
+                },
+
+                close() {
+                    this.isOpen = false;
+                    document.body.style.overflow = '';
+                },
+
+                confirm() {
+                    if (this.onConfirm && typeof this.onConfirm === 'function') {
+                        this.onConfirm();
+                    }
+                    this.close();
+                },
+
+                getIcon() {
+                    const icons = {
+                        confirm: 'fas fa-question-circle',
+                        warning: 'fas fa-exclamation-triangle',
+                        danger: 'fas fa-exclamation-circle',
+                        success: 'fas fa-check-circle'
+                    };
+                    return icons[this.type] || icons.confirm;
+                },
+
+                getIconClass() {
+                    return `icon-${this.type}`;
+                }
+            });
+        });
+
+        // ============================================
+        // Alpine.js Dashboard Filters Component
+        // ============================================
+        function dashboardFilters() {
+            return {
+                location: '<?= $filter_location_id ?>',
+                martialArt: '<?= $martial_art_filter ?>',
+                isLoading: false,
+                weekStart: '<?= $start_of_week ?>',
+
+                init() {
+                    // Save preferences to localStorage
+                    this.$watch('location', value => localStorage.setItem('gb_location', value));
+                    this.$watch('martialArt', value => localStorage.setItem('gb_martial_art', value));
+                },
+
+                applyFilters() {
+                    this.isLoading = true;
+
+                    // Smooth transition with small delay for visual feedback
+                    setTimeout(() => {
+                        const url = `dashboard.php?week_start=${this.weekStart}&location=${this.location}&martial_art=${this.martialArt}`;
+                        window.location = url;
+                    }, 300);
+                }
+            }
+        }
+
     </script>
 </body>
 

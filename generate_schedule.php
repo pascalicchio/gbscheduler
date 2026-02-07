@@ -1,6 +1,8 @@
 <?php
 // generate_schedule.php
-require 'db.php';
+require_once 'includes/config.php';
+
+requireAuth(['admin', 'manager']);
 
 $message = "";
 
@@ -71,98 +73,364 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 $locations = $pdo->query("SELECT * FROM locations")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<!DOCTYPE html>
-<html>
+$pageTitle = 'Generate Schedule | GB Scheduler';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+HTML;
 
-<head>
-    <title>Generate Schedule</title>
-    <link rel="icon" type="image/png" href="assets/favicon.png">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            max-width: 500px;
-            margin: auto;
+$extraCss = <<<CSS
+    body { padding: 20px; }
+
+    [x-cloak] { display: none !important; }
+
+    /* Page Header */
+    .page-header {
+        max-width: 600px;
+        margin: 0 auto 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .page-header h2 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h2 {
+            font-size: 1.75rem;
         }
+    }
 
-        .alert {
-            background: #d4edda;
-            color: #155724;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #c3e6cb;
-        }
+    /* Navigation Menu */
+    .nav-menu {
+        position: relative;
+    }
 
-        button {
-            background: #6610f2;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
+    .nav-menu-btn {
+        padding: 10px 18px;
+        background: white;
+        color: #2c3e50;
+        border: 2px solid #e8ecf2;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .flatpickr-presets {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            padding: 8px;
-            border-top: 1px solid #e6e6e6;
-            background: #f5f5f5;
-        }
+    .nav-menu-btn:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
 
-        .flatpickr-presets button {
-            flex: 1;
-            min-width: 70px;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75em;
-        }
+    .nav-menu-btn i {
+        font-size: 1.1rem;
+    }
 
-        .flatpickr-presets button:hover {
-            background: #e9ecef;
-            border-color: #6610f2;
-        }
-    </style>
-</head>
+    .nav-dropdown {
+        position: absolute;
+        top: calc(100% + 2px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        min-width: 220px;
+        z-index: 100;
+        overflow: hidden;
+        padding-top: 6px;
+    }
 
-<body>
+    .nav-dropdown::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    }
 
-    <h2>Generate Calendar Events</h2>
+    .nav-dropdown a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-dropdown a i {
+        width: 18px;
+        text-align: center;
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    .nav-dropdown a:hover {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
+        border-left-color: rgb(0, 201, 255);
+        padding-left: 24px;
+    }
+
+    .nav-dropdown a:hover i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.active {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
+        border-left-color: rgb(0, 201, 255);
+        color: rgb(0, 201, 255);
+        font-weight: 600;
+    }
+
+    .nav-dropdown a.active i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.logout {
+        border-top: 1px solid #e8ecf2;
+        margin-top: 6px;
+        color: #dc3545;
+    }
+
+    .nav-dropdown a.logout:hover {
+        background: rgba(220, 53, 69, 0.08);
+        border-left-color: #dc3545;
+    }
+
+    .nav-dropdown a.logout i {
+        color: #dc3545;
+    }
+
+    /* Form Card */
+    .form-card {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        padding: 30px;
+    }
+
+    .form-card p {
+        color: #6c757d;
+        margin: 0 0 24px;
+        font-size: 0.95rem;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+
+    .form-card input, .form-card select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        font-weight: 500;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: inherit;
+    }
+
+    .form-card input:focus, .form-card select:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+    }
+
+    .date-row {
+        display: flex;
+        gap: 16px;
+    }
+
+    .date-row .form-group {
+        flex: 1;
+    }
+
+    .form-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .btn-generate {
+        padding: 12px 24px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-generate:hover {
+        background-image: linear-gradient(135deg, rgb(0, 181, 235), rgb(126, 234, 137));
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 201, 255, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 12px 18px;
+        background: white;
+        color: #2c3e50;
+        border: 2px solid #e8ecf2;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.25s ease;
+    }
+
+    .btn-cancel:hover {
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
+
+    .alert {
+        max-width: 600px;
+        margin: 0 auto 20px;
+        background: #d4edda;
+        color: #155724;
+        padding: 14px 18px;
+        border-radius: 10px;
+        border: 1px solid #c3e6cb;
+        font-size: 0.95rem;
+    }
+
+    .alert a {
+        color: #155724;
+        font-weight: 700;
+    }
+
+    .flatpickr-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 8px;
+        border-top: 1px solid #e6e6e6;
+        background: #f5f5f5;
+    }
+
+    .flatpickr-presets button {
+        flex: 1;
+        min-width: 70px;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75em;
+        color: #2c3e50;
+    }
+
+    .flatpickr-presets button:hover {
+        background: #e9ecef;
+        border-color: rgb(0, 201, 255);
+    }
+CSS;
+
+require_once 'includes/header.php';
+?>
+
+<div class="page-header">
+    <h2><i class="fas fa-calendar-plus"></i> Generate Schedule</h2>
+    <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
+        <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </button>
+        <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
+            <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+            <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+            <?php if (canManage()): ?>
+                <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
+            <?php endif; ?>
+            <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+</div>
+
+<?php if ($message): ?>
+    <div class="alert"><?= $message ?> <a href="dashboard.php">Go to Calendar</a></div>
+<?php endif; ?>
+
+<div class="form-card">
     <p>Select a date range to fill your calendar based on your Master Schedule.</p>
 
-    <?php if ($message): ?>
-        <div class="alert"><?= $message ?> <a href="dashboard.php">Go to Calendar</a></div>
-    <?php endif; ?>
-
     <form method="POST">
-        <div style="margin-bottom:15px;">
-            <label>Location:</label><br>
-            <select name="location_id" style="width:100%; padding:8px;">
+        <div class="form-group">
+            <label>Location</label>
+            <select name="location_id">
                 <?php foreach ($locations as $loc): ?>
                     <option value="<?= $loc['id'] ?>"><?= $loc['name'] ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <div style="flex:1">
-                <label>From Date:</label>
-                <input type="text" name="start_date" id="start_date" required style="width:100%; padding:8px;" readonly>
+        <div class="date-row">
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="text" name="start_date" id="start_date" required readonly>
             </div>
-            <div style="flex:1">
-                <label>To Date:</label>
-                <input type="text" name="end_date" id="end_date" required style="width:100%; padding:8px;" readonly>
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="text" name="end_date" id="end_date" required readonly>
             </div>
         </div>
 
-        <button type="submit">Generate Events</button>
-        <a href="classes.php" style="margin-left:10px;">Back</a>
+        <div class="form-actions">
+            <button type="submit" class="btn-generate"><i class="fas fa-cogs"></i> Generate Events</button>
+            <a href="classes.php" class="btn-cancel">Cancel</a>
+        </div>
     </form>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -261,6 +529,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-</body>
-
-</html>
+<?php require_once 'includes/footer.php'; ?>

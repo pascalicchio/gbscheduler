@@ -435,6 +435,147 @@ HTML;
 $extraCss = <<<CSS
     body { padding: 20px; }
 
+    [x-cloak] { display: none !important; }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .page-header h2 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h2 {
+            font-size: 1.75rem;
+        }
+    }
+
+    /* Navigation Menu */
+    .nav-menu {
+        position: relative;
+    }
+
+    .nav-menu-btn {
+        padding: 10px 18px;
+        background: white;
+        color: #2c3e50;
+        border: 2px solid #e8ecf2;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-menu-btn:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-menu-btn i {
+        font-size: 1.1rem;
+    }
+
+    .nav-dropdown {
+        position: absolute;
+        top: calc(100% + 2px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        min-width: 220px;
+        z-index: 100;
+        overflow: hidden;
+        padding-top: 6px;
+    }
+
+    .nav-dropdown::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    }
+
+    .nav-dropdown a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-dropdown a i {
+        width: 18px;
+        text-align: center;
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    .nav-dropdown a:hover {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
+        border-left-color: rgb(0, 201, 255);
+        padding-left: 24px;
+    }
+
+    .nav-dropdown a:hover i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.active {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
+        border-left-color: rgb(0, 201, 255);
+        color: rgb(0, 201, 255);
+        font-weight: 600;
+    }
+
+    .nav-dropdown a.active i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.logout {
+        border-top: 1px solid #e8ecf2;
+        margin-top: 6px;
+        color: #dc3545;
+    }
+
+    .nav-dropdown a.logout:hover {
+        background: rgba(220, 53, 69, 0.08);
+        border-left-color: #dc3545;
+    }
+
+    .nav-dropdown a.logout i {
+        color: #dc3545;
+    }
+
     .tabs {
         display: flex;
         gap: 8px;
@@ -767,9 +908,27 @@ CSS;
 require_once 'includes/header.php';
 ?>
 
-<div class="top-bar">
-    <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
-    <h2 class="page-title"><i class="fas fa-money-check-alt"></i> Coach Payments</h2>
+<div class="page-header">
+    <h2><i class="fas fa-money-check-alt"></i> Coach Payments</h2>
+    <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
+        <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </button>
+        <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
+            <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+            <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+            <?php if (canManage()): ?>
+                <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                <a href="coach_payments.php" class="active"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
+            <?php endif; ?>
+            <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
 </div>
 
 <?= $msg ?>

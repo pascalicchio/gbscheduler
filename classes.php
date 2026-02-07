@@ -112,57 +112,235 @@ $extraHead = <<<HTML
 HTML;
 
 $extraCss = <<<CSS
-        /* --- PREMIUM DESIGN SYSTEM --- */
-        :root {
-            --primary: #007bff;
-            --primary-dark: #0056b3;
-            --secondary: #2c3e50;
-            --bg: #f4f6f9;
-            --border: #e1e4e8;
-            --success: #28a745;
-            --danger: #dc3545;
-        }
+    /* Design System */
+    :root {
+        --gradient-primary: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        --gradient-primary-hover: linear-gradient(135deg, rgb(0, 181, 235), rgb(126, 234, 137));
+        --gradient-dark: linear-gradient(135deg, #1a202c, #2d3748);
+        --text-dark: #2c3e50;
+        --text-secondary: #6c757d;
+        --border-light: #e8ecf2;
+        --bg: #f8fafb;
+        --bg-card: white;
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.12);
+    }
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--bg);
-            padding: 20px;
-            color: #333;
-            margin: 0;
-        }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: var(--bg);
+        padding: 20px;
+        color: #2c3e50;
+        -webkit-font-smoothing: antialiased;
+    }
 
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
 
-        .nav-link {
-            text-decoration: none;
-            color: var(--secondary);
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
+    .page-header-right {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
 
-        .nav-link:hover {
-            color: var(--primary);
-        }
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
 
-        .main-layout {
-            display: flex;
-            gap: 25px;
-            align-items: flex-start;
-        }
+    .page-header h2 i {
+        background-image: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
 
-        /* LEFT COLUMN: FORM */
-        .form-card {
+    @media (min-width: 768px) {
+        .page-header h2 {
+            font-size: 1.75rem;
+        }
+    }
+
+    /* Navigation Menu */
+    .nav-menu {
+        position: relative;
+    }
+
+    .nav-menu-btn {
+        padding: 10px 18px;
+        background: white;
+        color: #2c3e50;
+        border: 2px solid #e8ecf2;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-menu-btn:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-menu-btn i {
+        font-size: 1.1rem;
+    }
+
+    .nav-dropdown {
+        position: absolute;
+        top: calc(100% + 2px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        min-width: 220px;
+        z-index: 100;
+        overflow: hidden;
+        padding-top: 6px;
+    }
+
+    .nav-dropdown::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-image: var(--gradient-primary);
+    }
+
+    .nav-dropdown a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: var(--text-dark);
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-dropdown a i {
+        width: 18px;
+        text-align: center;
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    .nav-dropdown a:hover {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
+        border-left-color: rgb(0, 201, 255);
+        padding-left: 24px;
+    }
+
+    .nav-dropdown a:hover i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.active {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
+        border-left-color: rgb(0, 201, 255);
+        color: rgb(0, 201, 255);
+        font-weight: 600;
+    }
+
+    .nav-dropdown a.active i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.logout {
+        border-top: 1px solid var(--border-light);
+        margin-top: 6px;
+        color: #dc3545;
+    }
+
+    .nav-dropdown a.logout:hover {
+        background: rgba(220, 53, 69, 0.08);
+        border-left-color: #dc3545;
+    }
+
+    .nav-dropdown a.logout i {
+        color: #dc3545;
+    }
+
+    [x-cloak] { display: none !important; }
+
+    .inline-block {
+        display: inline-block;
+    }
+
+    .toggle-container {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .toggle-container a,
+    .toggle-container span.toggle-btn {
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .toggle-active {
+        background: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        color: white;
+        box-shadow: 0 2px 8px rgba(0, 201, 255, 0.3);
+    }
+
+    .toggle-inactive-btn {
+        background: white;
+        color: #666;
+        border: 2px solid #e8ecf2;
+    }
+
+    .toggle-inactive-btn:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
+
+    .inactive-badge {
+        background: #dc3545;
+        color: white;
+        font-size: 0.75em;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    .main-layout {
+        display: flex;
+        gap: 25px;
+        align-items: flex-start;
+    }
+
+    /* LEFT COLUMN: FORM */
+    .form-card {
             flex: 0 0 350px;
             background: white;
             padding: 25px;
@@ -172,40 +350,57 @@ $extraCss = <<<CSS
             top: 20px;
         }
 
-        .form-card h3 {
-            margin-top: 0;
-            color: var(--secondary);
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
+    .form-card h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-            color: #555;
-        }
+    .form-card label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+        margin-top: 14px;
+        text-transform: uppercase;
+        color: #2c3e50;
+        letter-spacing: 0.05em;
+    }
 
-        input[type="text"],
-        input[type="time"],
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 0.95em;
-        }
+    .form-card label:first-of-type {
+        margin-top: 0;
+    }
 
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        }
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        font-weight: 500;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: inherit;
+        margin-bottom: 20px;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+    }
+
+    .form-card textarea {
+        resize: vertical;
+        min-height: 60px;
+    }
 
         /* Checkbox Grid */
         .days-grid {
@@ -238,33 +433,44 @@ $extraCss = <<<CSS
             flex: 1;
         }
 
-        button.btn-save {
-            width: 100%;
-            padding: 12px;
-            background: var(--success);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
+    button.btn-save {
+        width: 100%;
+        padding: 12px;
+        background-image: var(--gradient-primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 201, 255, 0.25);
+    }
 
-        button.btn-save:hover {
-            background: #218838;
-        }
+    button.btn-save:hover {
+        background-image: var(--gradient-primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 201, 255, 0.35);
+    }
 
-        button.btn-reset {
-            width: 100%;
-            padding: 10px;
-            background: #e2e6ea;
-            color: #555;
-            border: 1px solid #d6d8db;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-weight: bold;
-        }
+    button.btn-reset {
+        width: 100%;
+        padding: 10px;
+        background: #f8f9fa;
+        color: #6c757d;
+        border: 2px solid #e8ecf2;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 10px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    button.btn-reset:hover {
+        background: white;
+        border-color: #6c757d;
+        color: #495057;
+    }
 
         .alert {
             padding: 12px;
@@ -296,67 +502,101 @@ $extraCss = <<<CSS
             gap: 30px;
         }
 
-        .loc-group {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-            border: 1px solid #e1e4e8;
-        }
+    .loc-group {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        border: 1px solid var(--border-light);
+    }
 
-        .loc-header {
-            background: var(--secondary);
-            color: white;
-            padding: 15px 20px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.1em;
-        }
+    .loc-header {
+        background-image: var(--gradient-dark);
+        color: white;
+        padding: 15px 20px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1em;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9em;
-        }
+    .loc-header i {
+        color: rgb(146, 254, 157);
+    }
 
-        th {
-            background: #f8f9fa;
-            color: #666;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            padding: 12px 20px;
-            text-align: left;
-            border-bottom: 2px solid #eee;
-        }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+    }
 
-        td {
-            padding: 12px 20px;
-            border-bottom: 1px solid #f0f0f0;
-            color: #333;
-        }
+    th {
+        background: linear-gradient(to bottom, #fafbfc, #f5f7fa);
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 700;
+        color: var(--text-dark);
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--border-light);
+    }
 
-        tr:hover td {
-            background: #fafafa;
-        }
+    td {
+        padding: 14px 15px;
+        border-bottom: 1px solid #f0f1f3;
+        color: #555;
+    }
 
-        /* Filter Inputs inside Table Header */
-        .filter-row th {
-            background: #fff;
-            padding: 10px 20px;
-            border-bottom: 2px solid #e1e4e8;
-        }
+    tr:hover td {
+        background: #fafafa;
+    }
 
-        .table-filter {
-            width: 100%;
-            padding: 6px 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 0.9em;
-            margin: 0;
-        }
+    /* Column widths */
+    table th:nth-child(1),
+    table td:nth-child(1) {
+        width: 20%;
+    }
+
+    table th:nth-child(2),
+    table td:nth-child(2) {
+        width: 20%;
+    }
+
+    table th:nth-child(3),
+    table td:nth-child(3) {
+        width: 15%;
+    }
+
+    table th:last-child,
+    table td:last-child {
+        text-align: right;
+    }
+
+    /* Filter Inputs inside Table Header */
+    .filter-row th {
+        background: #fff;
+        padding: 10px 15px;
+        border-bottom: 2px solid var(--border-light);
+    }
+
+    .table-filter {
+        width: 100%;
+        padding: 6px 10px;
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.85em;
+        margin: 0;
+        font-weight: 500;
+        transition: all 0.25s ease;
+    }
+
+    .table-filter:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 3px rgba(0, 201, 255, 0.08);
+    }
 
         .tag {
             font-size: 0.8em;
@@ -433,44 +673,6 @@ $extraCss = <<<CSS
             padding: 4px;
             border-radius: 6px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-
-        .toggle-container a,
-        .toggle-container span.toggle-btn {
-            text-decoration: none;
-            padding: 8px 14px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .toggle-active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        }
-
-        .toggle-inactive-btn {
-            background: transparent;
-            color: #666;
-        }
-
-        .toggle-inactive-btn:hover {
-            background: rgba(0,0,0,0.05);
-        }
-
-        .inactive-badge {
-            background: #ffc107;
-            color: #333;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.75em;
-            font-weight: bold;
         }
 
         /* Deactivation modal */
@@ -579,9 +781,9 @@ require_once 'includes/header.php';
         })();
     </script>
 
-    <div class="top-bar">
-        <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
-        <h2 style="margin:0; color:#2c3e50;">Manage Classes</h2>
+<div class="page-header">
+    <h2><i class="fas fa-graduation-cap"></i> Manage Classes</h2>
+    <div class="page-header-right">
         <div class="toggle-container">
             <?php if ($show_inactive): ?>
                 <a href="classes.php" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '0');">
@@ -598,7 +800,27 @@ require_once 'includes/header.php';
                 </a>
             <?php endif; ?>
         </div>
+        <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
+            <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
+                <i class="fas fa-bars"></i>
+                <span>Menu</span>
+            </button>
+            <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
+                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+                <?php if (canManage()): ?>
+                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                    <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                    <a href="classes.php" class="active"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                    <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
+                <?php endif; ?>
+                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
     </div>
+</div>
 
     <div class="main-layout">
 
@@ -610,7 +832,7 @@ require_once 'includes/header.php';
                 <input type="hidden" name="template_id" id="template_id">
                 <input type="hidden" name="original_day" id="original_day">
 
-                <label>Class Name <small style="color:#999; font-weight:normal;">(optional)</small></label>
+                <label>Class Name <small class="text-gray-500 font-normal">(optional)</small></label>
                 <input type="text" name="class_name" id="class_name" placeholder="e.g. Fundamentals">
 
                 <div class="row">
@@ -638,7 +860,7 @@ require_once 'includes/header.php';
                     <?php foreach ($days_of_week as $d): ?>
                         <div class="day-option">
                             <input type="checkbox" name="days[]" value="<?= $d ?>" id="day_<?= $d ?>">
-                            <label for="day_<?= $d ?>" style="margin:0; font-weight:normal;"><?= $d ?></label>
+                            <label for="day_<?= $d ?>" class="m-0 font-normal"><?= $d ?></label>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -669,11 +891,11 @@ require_once 'includes/header.php';
                     <table id="table-<?= $lid ?>">
                         <thead>
                             <tr>
-                                <th style="width:20%">Day</th>
-                                <th style="width:20%">Time</th>
-                                <th style="width:15%">Type</th>
+                                <th>Day</th>
+                                <th>Time</th>
+                                <th>Type</th>
                                 <th>Class Name</th>
-                                <th style="text-align:right">Actions</th>
+                                <th>Actions</th>
                             </tr>
                             <tr class="filter-row">
                                 <th>
@@ -711,7 +933,7 @@ require_once 'includes/header.php';
                                             <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="col-time" style="color:#666;">
+                                    <td class="col-time text-gray-600">
                                         <?= date('g:i A', strtotime($c['start_time'])) ?>
                                     </td>
                                     <td class="col-type">
@@ -729,7 +951,7 @@ require_once 'includes/header.php';
                                         <div class="actions">
                                             <?php if ($isInactive): ?>
                                                 <!-- Reactivate button for inactive classes -->
-                                                <form method="POST" onsubmit="return confirm('Reactivate this class?');" style="display:inline;">
+                                                <form method="POST" onsubmit="return confirm('Reactivate this class?');" class="inline-block">
                                                     <input type="hidden" name="action" value="reactivate">
                                                     <input type="hidden" name="id" value="<?= $c['id'] ?>">
                                                     <button type="submit" class="btn-icon btn-reactivate" title="Reactivate">
@@ -741,7 +963,7 @@ require_once 'includes/header.php';
                                                 <button class="btn-icon btn-edit" onclick='editClass(<?= json_encode($c) ?>)' title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <form method="POST" onsubmit="return confirmDeactivate(this);" style="display:inline;">
+                                                <form method="POST" onsubmit="return confirmDeactivate(this);" class="inline-block">
                                                     <input type="hidden" name="action" value="deactivate">
                                                     <input type="hidden" name="id" value="<?= $c['id'] ?>">
                                                     <input type="hidden" name="deactivate_date" class="deactivate-date-input">
@@ -858,11 +1080,11 @@ require_once 'includes/header.php';
     <!-- Deactivation Modal -->
     <div id="deactivate-modal" class="modal-overlay" onclick="if(event.target === this) closeModal();">
         <div class="modal-box">
-            <h3><i class="fas fa-power-off" style="color: var(--danger);"></i> Deactivate Class</h3>
+            <h3><i class="fas fa-power-off text-red-600"></i> Deactivate Class</h3>
             <p>Choose when this class should stop appearing on the schedule. It will still show for dates before this.</p>
-            <label style="font-weight: 600; font-size: 0.9em;">Deactivation Date:</label>
+            <label class="font-semibold text-sm">Deactivation Date:</label>
             <input type="text" id="deactivate-date" readonly>
-            <p style="font-size: 0.85em; color: #888; margin-top: 0;">
+            <p class="text-sm text-gray-600 mt-0">
                 <i class="fas fa-info-circle"></i> Payment history will be preserved. You can reactivate anytime.
             </p>
             <div class="modal-buttons">

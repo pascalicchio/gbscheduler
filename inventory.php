@@ -22,10 +22,18 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 }
 $total_pending = array_sum($pending_counts);
 
+// Fetch last inventory count date per location
+$last_counts = [];
+$stmt = $pdo->query("SELECT location_id, MAX(count_date) as last_date FROM inventory_counts GROUP BY location_id");
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $last_counts[$row['location_id']] = $row['last_date'];
+}
+
 // Current filters
 $filter_location = $_GET['location_id'] ?? ($locations[0]['id'] ?? '');
 $filter_category = $_GET['category_id'] ?? '';
-$filter_date = $_GET['count_date'] ?? date('Y-m-d');
+$default_last_date = $last_counts[$filter_location] ?? date('Y-m-d');
+$filter_date = $_GET['count_date'] ?? $default_last_date;
 $active_tab = $_GET['tab'] ?? 'counts';
 
 // Page setup
@@ -38,6 +46,147 @@ HTML;
 $extraCss = <<<CSS
     body { padding: 20px; }
 
+    [x-cloak] { display: none !important; }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .page-header h2 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    @media (min-width: 768px) {
+        .page-header h2 {
+            font-size: 1.75rem;
+        }
+    }
+
+    /* Navigation Menu */
+    .nav-menu {
+        position: relative;
+    }
+
+    .nav-menu-btn {
+        padding: 10px 18px;
+        background: white;
+        color: #2c3e50;
+        border: 2px solid #e8ecf2;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-menu-btn:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-menu-btn i {
+        font-size: 1.1rem;
+    }
+
+    .nav-dropdown {
+        position: absolute;
+        top: calc(100% + 2px);
+        right: 0;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        min-width: 220px;
+        z-index: 100;
+        overflow: hidden;
+        padding-top: 6px;
+    }
+
+    .nav-dropdown::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    }
+
+    .nav-dropdown a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        text-decoration: none;
+        color: #2c3e50;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .nav-dropdown a i {
+        width: 18px;
+        text-align: center;
+        font-size: 1rem;
+        color: #6c757d;
+    }
+
+    .nav-dropdown a:hover {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
+        border-left-color: rgb(0, 201, 255);
+        padding-left: 24px;
+    }
+
+    .nav-dropdown a:hover i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.active {
+        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
+        border-left-color: rgb(0, 201, 255);
+        color: rgb(0, 201, 255);
+        font-weight: 600;
+    }
+
+    .nav-dropdown a.active i {
+        color: rgb(0, 201, 255);
+    }
+
+    .nav-dropdown a.logout {
+        border-top: 1px solid #e8ecf2;
+        margin-top: 6px;
+        color: #dc3545;
+    }
+
+    .nav-dropdown a.logout:hover {
+        background: rgba(220, 53, 69, 0.08);
+        border-left-color: #dc3545;
+    }
+
+    .nav-dropdown a.logout i {
+        color: #dc3545;
+    }
+
     .tabs {
         display: flex;
         gap: 10px;
@@ -48,27 +197,31 @@ $extraCss = <<<CSS
     .tab-btn {
         position: relative;
         padding: 12px 20px;
-        border: 2px solid #e9ecef;
+        border: 2px solid #e8ecf2;
         background: white;
         cursor: pointer;
         font-weight: 600;
-        color: #666;
-        transition: all 0.2s;
-        border-radius: 8px;
+        color: #6c757d;
+        transition: all 0.25s ease;
+        border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .tab-btn:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+        border-color: rgba(0, 201, 255, 0.3);
+        color: rgb(0, 201, 255);
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
 
     .tab-btn.active {
-        background: var(--primary);
+        background: linear-gradient(135deg, #1a202c, #2d3748);
         color: white;
-        border-color: var(--primary);
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(26, 32, 44, 0.3);
     }
 
     .tab-btn .pending-badge {
@@ -96,45 +249,130 @@ $extraCss = <<<CSS
         display: none;
         background: white;
         padding: 20px;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     .tab-content.active {
         display: block;
     }
 
+    .tab-content h3 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #2c3e50;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .tab-content h3 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-right: 6px;
+    }
+
     .filter-bar {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         align-items: flex-end;
         flex-wrap: wrap;
         margin-bottom: 20px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: var(--radius);
+        padding: 18px;
+        background: #f8fafb;
+        border-radius: 12px;
+        border: 1px solid #e8ecf2;
     }
 
     .filter-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
     }
 
     .filter-group label {
-        font-size: 0.75em;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #666;
+        letter-spacing: 0.05em;
+        color: #2c3e50;
     }
 
     .filter-group select,
     .filter-group input {
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
+        padding: 10px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-weight: 500;
         min-width: 150px;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: inherit;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+    }
+
+    .last-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: linear-gradient(135deg, rgba(0, 201, 255, 0.08), rgba(146, 254, 157, 0.08));
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #2c3e50;
+        white-space: nowrap;
+        align-self: flex-end;
+    }
+
+    .last-count-badge i {
+        color: rgb(0, 201, 255);
+    }
+
+    .last-count-badge .last-date {
+        color: rgb(0, 160, 200);
+        font-weight: 700;
+    }
+
+    .last-count-badge.never {
+        background: rgba(220, 53, 69, 0.08);
+        border-color: rgba(220, 53, 69, 0.2);
+    }
+
+    .last-count-badge.never i,
+    .last-count-badge.never .last-date {
+        color: #dc3545;
+    }
+
+    /* Gradient buttons */
+    .btn-gradient {
+        padding: 10px 20px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-gradient:hover {
+        background-image: linear-gradient(135deg, rgb(0, 181, 235), rgb(126, 234, 137));
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 201, 255, 0.3);
     }
 
     /* Inventory Table */
@@ -144,81 +382,105 @@ $extraCss = <<<CSS
     }
 
     .inventory-table th {
-        background: #2c3e50;
+        background: linear-gradient(135deg, #1a202c, #2d3748);
         color: white;
         padding: 12px;
         text-align: left;
-        font-size: 0.85em;
+        font-size: 0.8rem;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .inventory-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid #eee;
+        padding: 7px 12px;
+        border-bottom: 1px solid #f0f0f0;
         vertical-align: middle;
+        font-size: 0.9rem;
     }
 
     .inventory-table tbody tr:hover {
-        background: #f8f9fa;
+        background: #f8fafb;
     }
 
     .category-header {
-        background: #e9ecef !important;
-        font-weight: bold;
-        color: #2c3e50;
+        background: #f8fafb !important;
     }
 
     .category-header td {
-        padding: 8px 12px;
-        font-size: 0.9em;
+        padding: 10px 12px 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
+        color: #6c757d;
+        border-bottom: 1px solid #e8ecf2;
     }
 
-    /* Stock Level Colors */
+    .category-header td i {
+        color: rgb(0, 201, 255);
+        margin-right: 4px;
+    }
+
+    /* Stock Level — subtle left border instead of full row bg */
     .stock-critical {
-        background-color: #f8d7da !important;
+        border-left: 3px solid #dc3545;
+    }
+
+    .stock-critical td:first-child {
+        color: #dc3545;
+        font-weight: 600;
     }
 
     .stock-low {
-        background-color: #fff3cd !important;
+        border-left: 3px solid #f0ad4e;
+    }
+
+    .stock-low td:first-child {
+        color: #b8860b;
     }
 
     .stock-input {
         width: 70px;
-        padding: 6px 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        padding: 5px 8px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
         text-align: center;
-        font-size: 14px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.25s ease;
+        font-family: inherit;
     }
 
     .stock-input:focus {
-        border-color: var(--primary);
+        border-color: rgb(0, 201, 255);
         outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        box-shadow: 0 0 0 3px rgba(0, 201, 255, 0.1);
     }
 
     .trend-indicator {
-        font-size: 0.85em;
-        padding: 2px 6px;
-        border-radius: 4px;
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 6px;
         font-weight: 600;
     }
 
     .trend-down {
         color: #dc3545;
-        background: #f8d7da;
+        background: rgba(220, 53, 69, 0.08);
     }
 
     .trend-up {
         color: #28a745;
-        background: #d4edda;
+        background: rgba(40, 167, 69, 0.08);
     }
 
     .trend-same {
-        color: #6c757d;
-        background: #e9ecef;
+        color: #adb5bd;
+    }
+
+    .text-muted-center {
+        text-align: center;
+        color: #adb5bd;
     }
 
     /* Two Column Layout */
@@ -229,21 +491,81 @@ $extraCss = <<<CSS
 
     .form-panel {
         flex: 0 0 350px;
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: var(--radius);
+        background: #f8fafb;
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid #e8ecf2;
     }
 
     .form-panel h3 {
         margin-top: 0;
+        margin-bottom: 20px;
         color: #2c3e50;
-        border-bottom: 2px solid #2c3e50;
-        padding-bottom: 10px;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .form-panel h3 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-right: 6px;
+    }
+
+    .form-panel label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #2c3e50;
+        margin-bottom: 6px;
+    }
+
+    .form-panel input,
+    .form-panel select,
+    .form-panel textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: inherit;
+        margin-bottom: 14px;
+    }
+
+    .form-panel input:focus,
+    .form-panel select:focus,
+    .form-panel textarea:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
     }
 
     .data-panel {
         flex: 1;
         overflow-x: auto;
+    }
+
+    .data-panel h3 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #2c3e50;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .data-panel h3 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-right: 6px;
     }
 
     /* Order Request Status Badges */
@@ -267,7 +589,7 @@ $extraCss = <<<CSS
         bottom: 0;
         background: white;
         padding: 15px;
-        border-top: 2px solid #e9ecef;
+        border-top: 2px solid #e8ecf2;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -291,21 +613,69 @@ $extraCss = <<<CSS
 
     /* Product Management */
     .product-form {
-        background: white;
-        padding: 20px;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
+        background: #f8fafb;
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid #e8ecf2;
+        margin-bottom: 24px;
+    }
+
+    .product-form h3 {
+        margin-top: 0;
         margin-bottom: 20px;
+        color: #2c3e50;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .product-form h3 i {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-right: 6px;
     }
 
     .product-form .form-row {
         display: flex;
-        gap: 15px;
-        margin-bottom: 15px;
+        gap: 16px;
+        margin-bottom: 0;
     }
 
     .product-form .form-group {
         flex: 1;
+    }
+
+    .product-form label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #2c3e50;
+        margin-bottom: 6px;
+    }
+
+    .product-form input,
+    .product-form select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        box-sizing: border-box;
+        font-size: 0.9rem;
+        font-weight: 500;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: inherit;
+        margin-bottom: 14px;
+    }
+
+    .product-form input:focus,
+    .product-form select:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
     }
 
     /* Best Sellers */
@@ -314,7 +684,7 @@ $extraCss = <<<CSS
     }
 
     .best-sellers-table th {
-        background: #2c3e50;
+        background: linear-gradient(135deg, #1a202c, #2d3748);
         color: white;
         padding: 10px;
     }
@@ -377,9 +747,27 @@ CSS;
 require_once 'includes/header.php';
 ?>
 
-<div class="top-bar">
-    <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
-    <h2 class="page-title"><i class="fas fa-boxes"></i> Inventory Management</h2>
+<div class="page-header">
+    <h2><i class="fas fa-boxes"></i> Inventory Management</h2>
+    <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
+        <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </button>
+        <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
+            <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+            <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+            <?php if (canManage()): ?>
+                <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                <a href="inventory.php" class="active"><i class="fas fa-boxes"></i> Inventory</a>
+            <?php endif; ?>
+            <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
 </div>
 
 <?= $msg ?>
@@ -408,7 +796,7 @@ require_once 'includes/header.php';
     <div class="filter-bar">
         <div class="filter-group">
             <label>Location</label>
-            <select id="filter-location">
+            <select id="filter-location" onchange="onLocationChange()">
                 <?php foreach ($locations as $loc): ?>
                     <option value="<?= $loc['id'] ?>" <?= $filter_location == $loc['id'] ? 'selected' : '' ?>><?= e($loc['name']) ?></option>
                 <?php endforeach; ?>
@@ -427,24 +815,27 @@ require_once 'includes/header.php';
             <label>Count Date</label>
             <input type="text" id="filter-date" value="<?= $filter_date ?>" readonly>
         </div>
-        <button class="btn btn-primary" onclick="loadInventory()">
+        <button class="btn-gradient" onclick="loadInventory()">
             <i class="fas fa-sync"></i> Load
         </button>
+        <span class="last-count-badge" id="last-count-badge">
+            <i class="fas fa-clock"></i> Last count: <span class="last-date" id="last-count-date">—</span>
+        </span>
     </div>
 
     <div id="inventory-container">
         <table class="inventory-table">
             <thead>
                 <tr>
-                    <th style="width:40%">Product</th>
-                    <th style="width:15%">Size / Color</th>
-                    <th style="width:15%">Last Week</th>
-                    <th style="width:15%">Current Count</th>
-                    <th style="width:15%">Change</th>
+                    <th>Product</th>
+                    <th>Size / Color</th>
+                    <th>Last Week</th>
+                    <th>Current Count</th>
+                    <th>Change</th>
                 </tr>
             </thead>
             <tbody id="inventory-body">
-                <tr><td colspan="5" style="text-align:center; padding:40px; color:#999;">Select a location and date, then click Load</td></tr>
+                <tr><td colspan="5" class="text-center text-gray-400 py-10">Select a location and date, then click Load</td></tr>
             </tbody>
         </table>
     </div>
@@ -453,7 +844,7 @@ require_once 'includes/header.php';
         <span class="unsaved-indicator" id="unsaved-indicator">
             <i class="fas fa-exclamation-circle"></i> Unsaved changes
         </span>
-        <button class="btn btn-success btn-save" onclick="saveInventory()">
+        <button class="btn-gradient" onclick="saveInventory()">
             <i class="fas fa-save"></i> Save All Counts
         </button>
     </div>
@@ -478,7 +869,7 @@ require_once 'includes/header.php';
             <label>To Date</label>
             <input type="text" id="trends-to" value="<?= date('Y-m-d') ?>" readonly>
         </div>
-        <button class="btn btn-primary" onclick="loadTrends()">
+        <button class="btn-gradient" onclick="loadTrends()">
             <i class="fas fa-chart-line"></i> Analyze
         </button>
     </div>
@@ -487,14 +878,14 @@ require_once 'includes/header.php';
     <table class="inventory-table best-sellers-table">
         <thead>
             <tr>
-                <th style="width:10%">Rank</th>
-                <th style="width:50%">Product</th>
-                <th style="width:20%">Size / Color</th>
-                <th style="width:20%">Est. Sales</th>
+                <th>Rank</th>
+                <th>Product</th>
+                <th>Size / Color</th>
+                <th>Est. Sales</th>
             </tr>
         </thead>
         <tbody id="trends-body">
-            <tr><td colspan="4" style="text-align:center; padding:40px; color:#999;">Click Analyze to see trends</td></tr>
+            <tr><td colspan="4" class="text-center text-gray-400 py-10">Click Analyze to see trends</td></tr>
         </tbody>
     </table>
 </div>
@@ -552,7 +943,7 @@ require_once 'includes/header.php';
                 <label>Notes</label>
                 <textarea name="notes" rows="2" placeholder="Additional notes..."></textarea>
 
-                <button type="submit" class="btn btn-primary btn-block mt-1">
+                <button type="submit" class="btn-gradient mt-1">
                     <i class="fas fa-plus"></i> Add Request
                 </button>
             </form>
@@ -572,7 +963,7 @@ require_once 'includes/header.php';
                     </tr>
                 </thead>
                 <tbody id="orders-body">
-                    <tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Loading...</td></tr>
+                    <tr><td colspan="6" class="text-center text-gray-400 py-5">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -626,8 +1017,8 @@ require_once 'includes/header.php';
                     <label>Low Stock Threshold</label>
                     <input type="number" name="low_stock_threshold" value="8" min="1">
                 </div>
-                <div class="form-group" style="flex:0 0 auto; display:flex; align-items:flex-end;">
-                    <button type="submit" class="btn btn-primary">
+                <div class="form-group flex-none flex items-end">
+                    <button type="submit" class="btn-gradient">
                         <i class="fas fa-plus"></i> Add Product
                     </button>
                 </div>
@@ -659,13 +1050,16 @@ require_once 'includes/header.php';
             </tr>
         </thead>
         <tbody id="products-body">
-            <tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">Loading...</td></tr>
+            <tr><td colspan="6" class="text-center text-gray-400 py-5">Loading...</td></tr>
         </tbody>
     </table>
 </div>
 <?php endif; ?>
 
 <script>
+// Last count dates per location
+const lastCounts = <?= json_encode($last_counts) ?>;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -694,8 +1088,12 @@ document.addEventListener('DOMContentLoaded', function() {
     flatpickr('#trends-from', { dateFormat: 'Y-m-d' });
     flatpickr('#trends-to', { dateFormat: 'Y-m-d' });
 
+    // Show last count badge for initial location
+    updateLastCountBadge();
+
     // Load initial data
     const activeTab = '<?= $active_tab ?>';
+    if (activeTab === 'counts') loadInventory();
     if (activeTab === 'orders') loadOrders();
     if (activeTab === 'products') loadProducts();
 
@@ -749,6 +1147,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
 let hasUnsavedChanges = false;
 
+function formatLastDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function updateLastCountBadge() {
+    const locationId = document.getElementById('filter-location').value;
+    const badge = document.getElementById('last-count-badge');
+    const dateSpan = document.getElementById('last-count-date');
+    const lastDate = lastCounts[locationId];
+
+    if (lastDate) {
+        dateSpan.textContent = formatLastDate(lastDate);
+        badge.classList.remove('never');
+    } else {
+        dateSpan.textContent = 'Never';
+        badge.classList.add('never');
+    }
+}
+
+function onLocationChange() {
+    const locationId = document.getElementById('filter-location').value;
+    const lastDate = lastCounts[locationId] || new Date().toISOString().split('T')[0];
+
+    // Update date picker to last count date
+    const dateInput = document.getElementById('filter-date');
+    dateInput._flatpickr.setDate(lastDate, true);
+
+    updateLastCountBadge();
+    loadInventory();
+}
+
 function loadInventory() {
     const locationId = document.getElementById('filter-location').value;
     const categoryId = document.getElementById('filter-category').value;
@@ -801,7 +1231,7 @@ function renderInventoryTable(products, counts, prevCounts) {
             <tr class="${stockClass}" data-product-id="${product.id}">
                 <td>${escapeHtml(product.name)}</td>
                 <td>${escapeHtml(product.size || '')} ${product.color ? '/ ' + escapeHtml(product.color) : ''}</td>
-                <td style="text-align:center; color:#999;">${prevCount}</td>
+                <td class="text-muted-center">${prevCount}</td>
                 <td>
                     <input type="number" class="stock-input" value="${count}" min="0"
                            data-product-id="${product.id}" data-original="${count}"
@@ -813,7 +1243,7 @@ function renderInventoryTable(products, counts, prevCounts) {
     });
 
     if (products.length === 0) {
-        html = '<tr><td colspan="5" style="text-align:center; padding:40px; color:#999;">No products found</td></tr>';
+        html = '<tr><td colspan="5" class="text-center text-gray-400 py-10">No products found</td></tr>';
     }
 
     tbody.innerHTML = html;
@@ -852,6 +1282,10 @@ function saveInventory() {
             showNotification('Inventory saved!', 'success');
             hasUnsavedChanges = false;
             document.getElementById('unsaved-indicator').classList.remove('show');
+
+            // Update last count date for this location
+            lastCounts[locationId] = countDate;
+            updateLastCountBadge();
 
             // Update original values
             inputs.forEach(input => {
@@ -901,7 +1335,7 @@ function renderTrendsTable(trends) {
     });
 
     if (trends.length === 0) {
-        html = '<tr><td colspan="4" style="text-align:center; padding:40px; color:#999;">No sales data found for this period</td></tr>';
+        html = '<tr><td colspan="4" class="text-center text-gray-400 py-10">No sales data found for this period</td></tr>';
     }
 
     tbody.innerHTML = html;
@@ -941,7 +1375,7 @@ function renderOrdersTable(orders, pendingCount) {
                     </select>
                 </td>
                 <td>
-                    ${order.notes ? `<span title="${escapeHtml(order.notes)}" style="cursor:help;"><i class="fas fa-sticky-note" style="color:#ffc107;"></i></span>` : ''}
+                    ${order.notes ? `<span title="${escapeHtml(order.notes)}" class="cursor-help"><i class="fas fa-sticky-note text-yellow-500"></i></span>` : ''}
                     <button class="btn-icon danger" onclick="deleteOrder(${order.id})"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
@@ -949,7 +1383,7 @@ function renderOrdersTable(orders, pendingCount) {
     });
 
     if (orders.length === 0) {
-        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No order requests</td></tr>';
+        html = '<tr><td colspan="6" class="text-center text-gray-400 py-5">No order requests</td></tr>';
     }
 
     tbody.innerHTML = html;
@@ -1051,7 +1485,7 @@ function renderProductsTable(products) {
     });
 
     if (products.length === 0) {
-        html = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No products found</td></tr>';
+        html = '<tr><td colspan="6" class="text-center text-gray-400 py-5">No products found</td></tr>';
     }
 
     tbody.innerHTML = html;

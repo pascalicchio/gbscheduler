@@ -130,134 +130,429 @@ $extraHead = <<<HTML
 HTML;
 
 $extraCss = <<<CSS
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            padding: 20px;
-            background-color: #f4f6f9;
-            color: #333;
+        /* Alpine.js cloak */
+        [x-cloak] {
+            display: none !important;
         }
 
-        .top-bar {
+        /* ======================================== */
+        /* CSS Variables - Gradient Design System */
+        /* ======================================== */
+        :root {
+            --gradient-primary: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+            --gradient-hover: linear-gradient(135deg, rgb(0, 181, 235), rgb(126, 234, 137));
+            --gradient-dark: linear-gradient(135deg, #1a202c, #2d3748);
+            --text-dark: #2c3e50;
+            --text-secondary: #6c757d;
+            --text-light: #a0aec0;
+            --bg-color: #f8fafb;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 12px 30px rgba(0, 201, 255, 0.12);
+            --money-color: rgb(58, 222, 215);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        /* ======================================== */
+        /* Base Layout - Mobile First */
+        /* ======================================== */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 16px;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        @media (min-width: 768px) {
+            body {
+                padding: 24px;
+            }
+        }
+
+        /* ======================================== */
+        /* Page Header - Standardized Layout */
+        /* ======================================== */
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .back-link {
-            text-decoration: none;
-            color: #666;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-
-        .controls {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            display: flex;
-            gap: 15px;
-            align-items: flex-end;
-            margin-bottom: 25px;
+            margin-bottom: 24px;
             flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .page-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-header h2 i {
+            background-image: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @media (min-width: 768px) {
+            .page-header h2 {
+                font-size: 1.75rem;
+            }
+        }
+
+        /* ======================================== */
+        /* Navigation Menu */
+        /* ======================================== */
+        .nav-menu {
+            position: relative;
+        }
+
+        .nav-menu-btn {
+            padding: 10px 18px;
+            background: white;
+            color: #2c3e50;
+            border: 2px solid #e8ecf2;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-menu-btn:hover {
+            background: rgba(0, 201, 255, 0.05);
+            border-color: rgba(0, 201, 255, 0.3);
+            color: rgb(0, 201, 255);
+        }
+
+        .nav-menu-btn i {
+            font-size: 1.1rem;
+        }
+
+        .nav-dropdown {
+            position: absolute;
+            top: calc(100% + 2px);
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(0, 201, 255, 0.2);
+            min-width: 220px;
+            z-index: 100;
+            overflow: hidden;
+            padding-top: 6px;
+        }
+
+        .nav-dropdown::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-image: var(--gradient-primary);
+        }
+
+        .nav-dropdown a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-dropdown a i {
+            width: 18px;
+            text-align: center;
+            font-size: 1rem;
+            color: #6c757d;
+        }
+
+        .nav-dropdown a:hover {
+            background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
+            border-left-color: rgb(0, 201, 255);
+            padding-left: 24px;
+        }
+
+        .nav-dropdown a:hover i {
+            color: rgb(0, 201, 255);
+        }
+
+        .nav-dropdown a.active {
+            background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
+            border-left-color: rgb(0, 201, 255);
+            color: rgb(0, 201, 255);
+            font-weight: 600;
+        }
+
+        .nav-dropdown a.active i {
+            color: rgb(0, 201, 255);
+        }
+
+        .nav-dropdown a.logout {
+            border-top: 1px solid var(--border-light);
+            margin-top: 6px;
+            color: #dc3545;
+        }
+
+        .nav-dropdown a.logout:hover {
+            background: rgba(220, 53, 69, 0.08);
+            border-left-color: #dc3545;
+        }
+
+        .nav-dropdown a.logout i {
+            color: #dc3545;
+        }
+
+        /* ======================================== */
+        /* Filter Controls */
+        /* ======================================== */
+        .controls {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        @media (min-width: 768px) {
+            .controls {
+                padding: 20px;
+                gap: 16px;
+            }
         }
 
         .form-group {
             display: flex;
             flex-direction: column;
-            min-width: 150px;
+            min-width: 140px;
+            flex: 1;
+        }
+
+        @media (min-width: 768px) {
+            .form-group {
+                flex: 0 0 auto;
+                min-width: 160px;
+            }
         }
 
         .form-group label {
-            font-size: 0.8em;
-            font-weight: bold;
-            margin-bottom: 4px;
-            color: #555;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-dark);
             text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group.spacer {
+            flex: 1;
+            min-width: 0;
         }
 
         input[type="text"],
         select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 10px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
             width: 100%;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.25s ease;
+            background: var(--bg-card);
+            color: var(--text-dark);
+            height: 42px;
             box-sizing: border-box;
-            height: 35px;
+            font-family: inherit;
         }
 
-        /* Flatpickr preset buttons */
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: rgb(0, 201, 255);
+            box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+        }
+
+        /* Flatpickr preset buttons - 2 column grid */
         .flatpickr-presets {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            padding: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 10px;
             border-top: 1px solid #e6e6e6;
-            background: #f5f5f5;
+            background: #f8f9fa;
         }
 
         .flatpickr-presets button {
-            flex: 1;
-            min-width: 70px;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 4px;
+            padding: 8px 10px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 0.75em;
+            font-size: 0.8rem;
+            font-weight: 600;
             transition: all 0.2s;
-            height: auto;
+            color: var(--text-dark);
         }
 
         .flatpickr-presets button:hover {
-            background: #e9ecef;
-            border-color: #007bff;
+            background: rgba(0, 201, 255, 0.05);
+            border-color: rgb(0, 201, 255);
+            color: rgb(0, 181, 235);
         }
 
+        /* ======================================== */
+        /* Buttons */
+        /* ======================================== */
         button {
-            padding: 8px 15px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 4px;
+            border-radius: 10px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-gradient {
+            background-image: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 201, 255, 0.25);
+        }
+
+        .btn-gradient:hover {
+            background-image: var(--gradient-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 201, 255, 0.3);
+        }
+
+        .btn-view {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 10px 16px;
+            border-radius: 10px;
+        }
+
+        .btn-view:hover {
+            background: rgba(0, 201, 255, 0.05);
+            border-color: rgba(0, 201, 255, 0.3);
+            color: var(--text-dark);
+        }
+
+        .btn-view.active {
+            background-image: var(--gradient-dark);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-view:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .view-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* ======================================== */
+        /* Stats Summary - Dark Gradient Bar */
+        .stats-bar {
+            background-image: var(--gradient-dark);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-item .value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: white;
+        }
+
+        .stat-item .value.money {
+            color: rgb(146, 254, 157);
+            font-size: 1.5rem;
+        }
+
+        .stat-divider {
+            width: 2px;
             height: 35px;
-            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        .btn-blue {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-outline {
-            background: white;
-            border: 1px solid #ccc;
-            color: #555;
-        }
-
-        .btn-outline.active {
-            background: #2c3e50;
-            color: white;
-            border-color: #2c3e50;
-        }
-
+        /* ======================================== */
+        /* Location Block - Summary View */
+        /* ======================================== */
         .loc-block {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-            margin-bottom: 30px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
             overflow: hidden;
-            border: 1px solid #e1e4e8;
+            border: 1px solid var(--border-color);
         }
 
         .loc-header {
-            background: #2c3e50;
+            background-image: var(--gradient-dark);
             color: white;
-            padding: 12px 20px;
-            font-weight: bold;
+            padding: 14px 20px;
+            font-weight: 700;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+        }
+
+        .loc-header i {
+            margin-right: 8px;
+            opacity: 0.8;
         }
 
         .sum-table {
@@ -266,236 +561,227 @@ $extraCss = <<<CSS
         }
 
         .sum-table th {
-            background: #f8f9fa;
+            background: #f8fafb;
             text-align: left;
             padding: 10px 20px;
-            border-bottom: 2px solid #e9ecef;
-            font-size: 0.85em;
-            color: #777;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
         }
 
-        .sum-table th.text-right {
+        .sum-table th.col-right {
             text-align: right;
         }
 
         .sum-table td {
-            padding: 12px 20px;
+            padding: 14px 20px;
             border-bottom: 1px solid #f0f0f0;
         }
 
         .col-money {
-            text-align: right;
+            font-family: monospace;
             font-weight: bold;
-            color: #28a745;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        .col-total {
-            color: #28a745;
+            color: var(--money-color);
+            text-align: right;
             font-size: 1.1em;
         }
 
-        .global-summary {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        .col-money.muted {
+            color: var(--text-secondary);
         }
 
-        .global-summary h3 {
-            margin: 0 0 5px 0;
-            font-size: 1em;
-            opacity: 0.8;
-            font-weight: normal;
-            color: white !important;
+        .col-total {
+            color: var(--money-color);
+            font-size: 1.1em;
         }
 
-        .global-summary .big-number {
-            font-size: 1.8em;
-            font-weight: bold;
+        .col-right {
+            text-align: right;
         }
 
+        .loc-total-value {
+            font-size: 1.15em;
+        }
+
+        .loc-total-row {
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.05), rgba(146, 254, 157, 0.05));
+        }
+
+        .loc-total-row td {
+            font-weight: 700;
+            border-bottom: none;
+        }
+
+        /* ======================================== */
+        /* Coach Card - Detailed View */
+        /* ======================================== */
+        /* Coach Card Wrapper */
         .coach-card {
+            margin-bottom: 20px;
             background: white;
-            border: 1px solid #e1e4e8;
-            border-left: 5px solid #007bff;
-            margin-bottom: 30px;
-            padding: 0;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 201, 255, 0.1);
         }
 
-        .coach-header {
-            padding: 12px 20px;
-            border-bottom: 1px solid #eee;
+        /* Location Header with Gradient - Like reports.php */
+        .loc-sub-header {
+            background-image: var(--gradient-primary);
+            color: white;
+            padding: 14px 18px;
+            font-weight: 700;
+            font-size: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #fff;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
-        .coach-header h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.25em;
-        }
-
-        .coach-stats {
-            display: flex;
-            gap: 8px;
-        }
-
-        .header-badge {
-            background: #f8f9fa;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.85em;
-            color: #666;
-            border: 1px solid #e9ecef;
-            font-weight: 500;
-        }
-
-        .header-badge.total {
-            background: #d4edda;
-            color: #155724;
-            border-color: #c3e6cb;
-            font-weight: 700;
-        }
-
-        /* LOCATION SUB-HEADER INSIDE DETAILED VIEW */
-        .loc-sub-header {
-            background: #f1f3f5;
-            padding: 8px 15px;
-            font-size: 0.9em;
-            font-weight: 700;
-            color: #495057;
-            border-top: 1px solid #dee2e6;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            justify-content: space-between;
+        .loc-sub-header i {
+            margin-right: 6px;
         }
 
         .loc-total-badge {
-            color: #28a745;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: white;
+            color: rgb(0, 201, 255);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
+        /* Detail Table */
         .detail-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.95em;
-            table-layout: fixed;
+            font-size: 0.9rem;
         }
 
         .detail-table th {
-            background: #f8f9fa;
+            background: #f8fafb;
+            color: var(--text-secondary);
             text-align: left;
-            padding: 10px 15px;
-            border-bottom: 2px solid #dee2e6;
-            color: #495057;
-            font-size: 0.85em;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
             text-transform: uppercase;
-            overflow: hidden;
+            letter-spacing: 0.05em;
+            font-weight: 700;
             white-space: nowrap;
-            text-overflow: ellipsis;
         }
 
         .detail-table td {
-            padding: 10px 15px;
-            border-bottom: 1px solid #eee;
-            color: #333;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            color: var(--text-dark);
             vertical-align: middle;
         }
 
-        .w-date {
-            width: 15%;
+        .detail-table tbody tr:hover {
+            background: rgba(0, 201, 255, 0.03);
         }
 
-        .w-time {
-            width: 10%;
+        .w-date { width: 15%; }
+        .w-time { width: 10%; }
+        .w-type { width: 15%; }
+        .w-det { width: 30%; }
+        .w-rate { width: 10%; }
+        .w-qty { width: 10%; }
+        .w-tot { width: 10%; }
+
+        .col-money {
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--money-color);
+            font-size: 1.1em;
         }
 
-        .w-type {
-            width: 15%;
+        /* Coach Detail Header */
+        .coach-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 24px 0;
         }
 
-        .w-det {
-            width: 30%;
+        .coach-detail-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
         }
 
-        /* Increased width since location column is gone */
-        .w-rate {
-            width: 10%;
+        .coach-detail-title i {
+            color: rgb(0, 201, 255);
         }
 
-        .w-qty {
-            width: 10%;
-        }
-
-        .w-tot {
-            width: 10%;
-        }
-
-        .text-right {
-            text-align: right !important;
-        }
-
+        /* Badges */
         .badge {
             display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
             font-weight: 700;
-            text-transform: capitalize;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .badge-reg {
-            background-color: #e3f2fd;
-            color: #1565c0;
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.15), rgba(0, 201, 255, 0.05));
+            color: rgb(0, 160, 200);
+            border: 1px solid rgba(0, 201, 255, 0.3);
         }
 
         .badge-priv {
-            background-color: #fff3e0;
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 152, 0, 0.05));
             color: #e65100;
+            border: 1px solid rgba(255, 152, 0, 0.3);
         }
 
         .pdf-only {
             display: none;
+            margin-bottom: 24px;
         }
 
-        /* Calendar View Styles */
+        /* ======================================== */
+        /* Calendar View */
+        /* ======================================== */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: #dee2e6;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
+            gap: 2px;
+            background: #e9ecef;
+            border: 1px solid rgba(0, 201, 255, 0.1);
+            border-radius: 12px;
             overflow: hidden;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         .calendar-header {
-            background: #2c3e50;
+            background: linear-gradient(135deg, #1a202c, #2d3748);
             color: white;
-            padding: 12px 8px;
+            padding: 12px 6px;
             text-align: center;
-            font-weight: bold;
-            font-size: 0.85em;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
         }
 
         .calendar-day {
             background: white;
-            min-height: 120px;
+            min-height: 100px;
             padding: 8px;
-            vertical-align: top;
+            transition: all 0.2s ease;
         }
 
         .calendar-day.other-month {
@@ -503,46 +789,53 @@ $extraCss = <<<CSS
         }
 
         .calendar-day.today {
-            background: #fff3cd;
+            background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+            border: 2px solid #ffc107;
         }
 
         .day-number {
-            font-weight: bold;
-            font-size: 0.9em;
-            color: #495057;
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #2c3e50;
             margin-bottom: 6px;
         }
 
         .day-activities {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
         }
 
         .activity-item {
-            font-size: 0.75em;
-            padding: 4px 6px;
-            border-radius: 3px;
+            font-size: 0.7rem;
+            padding: 5px 7px;
+            border-radius: 6px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 4px;
+            transition: all 0.15s ease;
         }
 
         .activity-item.regular {
-            background: #e3f2fd;
-            color: #1565c0;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #0d47a1;
             border-left: 3px solid #1565c0;
         }
 
         .activity-item.private {
-            background: #fff3e0;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
             color: #e65100;
-            border-left: 3px solid #e65100;
+            border-left: 3px solid #f57c00;
+        }
+
+        .activity-item:hover {
+            transform: translateX(2px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
         .activity-time {
-            font-weight: 600;
+            font-weight: 700;
             white-space: nowrap;
         }
 
@@ -554,22 +847,21 @@ $extraCss = <<<CSS
         }
 
         .activity-pay {
-            font-weight: bold;
+            font-weight: 800;
             white-space: nowrap;
         }
 
         .day-total {
             margin-top: 6px;
             padding-top: 6px;
-            border-top: 1px solid #eee;
-            font-size: 0.8em;
+            font-size: 0.7em;
             font-weight: bold;
-            color: #28a745;
+            color: var(--money-color);
             text-align: right;
         }
 
         .location-group {
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .location-group:last-child {
@@ -577,19 +869,58 @@ $extraCss = <<<CSS
         }
 
         .location-label {
-            font-size: 0.65em;
-            font-weight: bold;
-            color: #6c757d;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            margin-bottom: 2px;
-            padding: 2px 4px;
-            background: #e9ecef;
-            border-radius: 2px;
+            margin-bottom: 3px;
+            padding: 3px 6px;
+            background: rgba(0, 201, 255, 0.06);
+            border-radius: 4px;
+            letter-spacing: 0.05em;
         }
 
-        .btn-outline:disabled {
-            opacity: 0.5;
+        /* ======================================== */
+        /* PDF Button */
+        /* ======================================== */
+        .btn-pdf {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.25);
+        }
+
+        .btn-pdf:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            transform: translateY(-1px);
+        }
+
+        .btn-pdf:disabled {
+            background: #6c757d;
             cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* ======================================== */
+        /* Responsive */
+        /* ======================================== */
+        @media (min-width: 600px) {
+            .stats-bar {
+                padding: 18px 24px;
+            }
+
+            .stat-item .value {
+                font-size: 1.35rem;
+            }
+
+            .stat-item .value.money {
+                font-size: 1.75rem;
+            }
         }
 
         @media (max-width: 900px) {
@@ -599,13 +930,13 @@ $extraCss = <<<CSS
 
             .calendar-day {
                 min-height: 80px;
-                padding: 4px;
+                padding: 6px;
             }
 
             .activity-item {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 1px;
+                gap: 2px;
             }
 
             .activity-desc {
@@ -615,8 +946,8 @@ $extraCss = <<<CSS
 
         @media (max-width: 600px) {
             .calendar-header {
-                padding: 8px 4px;
-                font-size: 0.7em;
+                padding: 10px 4px;
+                font-size: 0.7rem;
             }
 
             .calendar-day {
@@ -624,12 +955,12 @@ $extraCss = <<<CSS
             }
 
             .day-number {
-                font-size: 0.8em;
+                font-size: 0.8rem;
             }
 
             .activity-item {
-                padding: 2px 4px;
-                font-size: 0.7em;
+                padding: 3px 5px;
+                font-size: 0.7rem;
             }
 
             .activity-time {
@@ -637,31 +968,34 @@ $extraCss = <<<CSS
             }
 
             .day-total {
-                font-size: 0.7em;
+                font-size: 0.7rem;
+            }
+
+            .stats-bar {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+
+            .stat-item .label {
+                font-size: 0.7rem;
+            }
+
+            .stat-item .value {
+                font-size: 1.1rem;
+            }
+
+            .stat-item .value.money {
+                font-size: 1.3rem;
+            }
+
+            .stat-divider {
+                display: none;
             }
         }
 
-        .btn-pdf {
-            background: #dc3545;
-            color: white;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-pdf:hover {
-            background: #c82333;
-        }
-
-        .btn-pdf:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-
         @media print {
-
             .controls,
-            .top-bar,
+            .page-header,
             .btn-pdf {
                 display: none !important;
             }
@@ -683,9 +1017,28 @@ CSS;
 require_once 'includes/header.php';
 ?>
 
-    <div class="top-bar">
-        <a href="dashboard.php" class="back-link">&larr; Back to Dashboard</a>
-        <h2 style="margin:0; color:#2c3e50;">Payroll Report</h2>
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2><i class="fas fa-file-invoice-dollar"></i> Payroll Report</h2>
+        <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
+            <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
+                <i class="fas fa-bars"></i>
+                <span>Menu</span>
+            </button>
+            <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
+                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+                <?php if (canManage()): ?>
+                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                    <a href="location_reports.php" class="active"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                    <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                    <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
+                <?php endif; ?>
+                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
     </div>
 
     <form method="GET" class="controls">
@@ -708,33 +1061,48 @@ require_once 'includes/header.php';
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="form-group" style="flex:1"></div>
+        <div class="form-group spacer"></div>
         <div class="form-group">
             <label>View Mode</label>
-            <div style="display:flex; gap:5px;">
-                <button type="submit" name="view" value="summary" class="btn-outline <?= $view_mode == 'summary' ? 'active' : '' ?>">Summary</button>
-                <button type="submit" name="view" value="detailed" class="btn-outline <?= $view_mode == 'detailed' ? 'active' : '' ?>">Detailed</button>
-                <button type="submit" name="view" value="calendar" id="btn-calendar" class="btn-outline <?= $view_mode == 'calendar' ? 'active' : '' ?>" <?= empty($filter_coach_id) ? 'disabled title="Select a coach first"' : '' ?>>Calendar</button>
+            <div class="view-buttons">
+                <button type="submit" name="view" value="summary" class="btn-view <?= $view_mode == 'summary' ? 'active' : '' ?>">Summary</button>
+                <button type="submit" name="view" value="detailed" class="btn-view <?= $view_mode == 'detailed' ? 'active' : '' ?>">Detailed</button>
+                <button type="submit" name="view" value="calendar" id="btn-calendar" class="btn-view <?= $view_mode == 'calendar' ? 'active' : '' ?>" <?= empty($filter_coach_id) ? 'disabled title="Select a coach first"' : '' ?>>Calendar</button>
             </div>
         </div>
         <div class="form-group">
-            <button type="submit" class="btn-blue">Apply Filters</button>
+            <button type="submit" class="btn-gradient">Apply</button>
         </div>
     </form>
 
     <!-- Global Summary Header (shown in both views) -->
-    <div class="global-summary">
-        <div style="text-align: left;">
-            <h3>Period</h3>
-            <div style="font-size: 1.1em; font-weight: bold;"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></div>
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="label">Period</span>
+            <span class="value"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></span>
         </div>
-        <div>
-            <h3>Total Hours</h3>
-            <div class="big-number"><?= number_format($grand_total_hours, 1) ?></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="label">Hours</span>
+            <span class="value"><?= number_format($grand_total_hours, 1) ?></span>
         </div>
-        <div style="text-align: right;">
-            <h3>Total Payroll</h3>
-            <div class="big-number">$<?= number_format($grand_total_pay, 2) ?></div>
+        <?php if ($filter_coach_id && isset($master_data[$filter_coach_id])): ?>
+            <?php $coach_data = $master_data[$filter_coach_id]; ?>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="label">Regular</span>
+                <span class="value money">$<?= number_format($coach_data['regular_pay'], 2) ?></span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="label">Private</span>
+                <span class="value money">$<?= number_format($coach_data['private_pay'], 2) ?></span>
+            </div>
+        <?php endif; ?>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+            <span class="label">Total Payroll</span>
+            <span class="value money">$<?= number_format($grand_total_pay, 2) ?></span>
         </div>
     </div>
 
@@ -753,9 +1121,9 @@ require_once 'includes/header.php';
                         <tr>
                             <th>Coach</th>
                             <th>Reg. Hours</th>
-                            <th class="text-right" style="color:#666">Reg. Pay</th>
-                            <th class="text-right" style="color:#666">Priv. Pay</th>
-                            <th class="text-right">Total</th>
+                            <th class="col-right">Reg. Pay</th>
+                            <th class="col-right">Priv. Pay</th>
+                            <th class="col-right">Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -782,14 +1150,14 @@ require_once 'includes/header.php';
                             <tr>
                                 <td><?= e($data['info']['name']) ?></td>
                                 <td><?= number_format($loc_reg_hrs, 2) ?></td>
-                                <td class="col-money" style="color:#666">$<?= number_format($loc_reg_pay, 2) ?></td>
-                                <td class="col-money" style="color:#666">$<?= number_format($loc_priv_pay, 2) ?></td>
+                                <td class="col-money muted">$<?= number_format($loc_reg_pay, 2) ?></td>
+                                <td class="col-money muted">$<?= number_format($loc_priv_pay, 2) ?></td>
                                 <td class="col-money col-total">$<?= number_format($loc_total_coach, 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                        <tr style="background:#f1f3f5; font-weight:bold;">
-                            <td colspan="4" style="text-align:right;">LOCATION TOTAL:</td>
-                            <td class="col-money col-total" style="font-size:1.2em;">$<?= number_format($loc_total, 2) ?></td>
+                        <tr class="loc-total-row">
+                            <td colspan="4" class="col-right">LOCATION TOTAL:</td>
+                            <td class="col-money col-total loc-total-value">$<?= number_format($loc_total, 2) ?></td>
                         </tr>
                     </tbody>
                 </table>
@@ -800,26 +1168,22 @@ require_once 'includes/header.php';
 
     <?php elseif ($view_mode === 'detailed'): ?>
 
-        <div style="margin-bottom: 20px; text-align: right;">
-            <button type="button" class="btn-pdf" onclick="exportPDF()" id="pdf-btn">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </button>
-        </div>
-
         <div id="pdf-content">
-        <!-- PDF Header (copy of global summary for PDF - hidden on screen) -->
-        <div class="global-summary pdf-only" style="margin-bottom: 25px;">
-            <div style="text-align: left;">
-                <h3>Period</h3>
-                <div style="font-size: 1.1em; font-weight: bold;"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></div>
+        <!-- PDF Header (copy of stats bar for PDF - hidden on screen) -->
+        <div class="stats-bar pdf-only">
+            <div class="stat-item">
+                <span class="label">Period</span>
+                <span class="value"><?= date('M d', strtotime($start_date)) ?> - <?= date('M d', strtotime($end_date)) ?></span>
             </div>
-            <div>
-                <h3>Total Hours</h3>
-                <div class="big-number"><?= number_format($grand_total_hours, 1) ?></div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="label">Hours</span>
+                <span class="value"><?= number_format($grand_total_hours, 1) ?></span>
             </div>
-            <div style="text-align: right;">
-                <h3>Total Payroll</h3>
-                <div class="big-number">$<?= number_format($grand_total_pay, 2) ?></div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+                <span class="label">Total Payroll</span>
+                <span class="value money">$<?= number_format($grand_total_pay, 2) ?></span>
             </div>
         </div>
 
@@ -832,16 +1196,16 @@ require_once 'includes/header.php';
                 $grouped_activities[$act['location_id']][] = $act;
             }
         ?>
+            <div class="coach-detail-header">
+                <h3 class="coach-detail-title">
+                    <i class="fas fa-user-circle"></i> 
+                    <?= e($data['info']['name']) ?>
+                </h3>
+                <button type="button" class="btn-pdf" onclick="exportPDF()" id="pdf-btn-<?= $uid ?>">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+            </div>
             <div class="coach-card">
-                <div class="coach-header">
-                    <h3><?= e($data['info']['name']) ?></h3>
-                    <div class="coach-stats">
-                        <span class="header-badge">Reg: $<?= number_format($data['regular_pay'], 2) ?></span>
-                        <span class="header-badge">Priv: $<?= number_format($data['private_pay'], 2) ?></span>
-                        <span class="header-badge total">Total: $<?= number_format($data['total_pay'], 2) ?></span>
-                    </div>
-                </div>
-
                 <?php foreach ($grouped_activities as $loc_id => $acts):
                     // Calculate sub-total for this location block
                     $block_total = 0;
@@ -862,9 +1226,9 @@ require_once 'includes/header.php';
                                 <th class="w-time">Time</th>
                                 <th class="w-type">Class/Type</th>
                                 <th class="w-det">Details</th>
-                                <th class="w-rate text-right">Rate</th>
-                                <th class="w-qty text-right">Qty</th>
-                                <th class="w-tot text-right">Total</th>
+                                <th class="w-rate col-right">Rate</th>
+                                <th class="w-qty col-right">Qty</th>
+                                <th class="w-tot col-right">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -880,9 +1244,9 @@ require_once 'includes/header.php';
                                         <?php endif; ?>
                                     </td>
                                     <td><?= $act['detail'] ?></td>
-                                    <td class="text-right"><?= ($act['rate'] == '-' || $act['rate'] == 0) ? '-' : '$' . number_format($act['rate'], 2) ?></td>
-                                    <td class="text-right"><?= $act['qty'] ?></td>
-                                    <td class="text-right" style="font-weight:bold; color:#28a745">$<?= number_format($act['pay'], 2) ?></td>
+                                    <td class="col-right"><?= ($act['rate'] == '-' || $act['rate'] == 0) ? '-' : '$' . number_format($act['rate'], 2) ?></td>
+                                    <td class="col-right"><?= $act['qty'] ?></td>
+                                    <td class="col-right col-money">$<?= number_format($act['pay'], 2) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -930,17 +1294,6 @@ require_once 'includes/header.php';
             $current_month = date('n', strtotime($start_date));
             $today = date('Y-m-d');
         ?>
-
-        <div class="coach-card" style="margin-bottom: 20px;">
-            <div class="coach-header">
-                <h3><i class="fas fa-calendar-alt"></i> <?= e($coach_data['info']['name']) ?> - <?= date('F Y', strtotime($start_date)) ?></h3>
-                <div class="coach-stats">
-                    <span class="header-badge">Reg: $<?= number_format($coach_data['regular_pay'], 2) ?></span>
-                    <span class="header-badge">Priv: $<?= number_format($coach_data['private_pay'], 2) ?></span>
-                    <span class="header-badge total">Total: $<?= number_format($coach_data['total_pay'], 2) ?></span>
-                </div>
-            </div>
-        </div>
 
         <div class="calendar-grid">
             <!-- Header Row -->
@@ -999,8 +1352,8 @@ require_once 'includes/header.php';
         </div>
 
         <?php else: ?>
-            <div class="alert" style="background:#fff3cd; padding:20px; border-radius:8px; text-align:center;">
-                <i class="fas fa-exclamation-triangle"></i> No data found for the selected coach.
+            <div class="bg-yellow-100 p-5 rounded-lg text-center">
+                <i class="fas fa-exclamation-triangle text-yellow-600"></i> No data found for the selected coach.
             </div>
         <?php endif; ?>
 
