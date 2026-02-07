@@ -91,118 +91,7 @@ $extraCss = <<<CSS
         align-items: center;
         gap: 12px;
     }
-
-    /* Navigation Menu */
-    .nav-menu {
-        position: relative;
-    }
-
-    .nav-menu-btn {
-        padding: 10px 18px;
-        background: white;
-        color: #2c3e50;
-        border: 2px solid #e8ecf2;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-menu-btn:hover {
-        background: rgba(0, 201, 255, 0.05);
-        border-color: rgba(0, 201, 255, 0.3);
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-menu-btn i {
-        font-size: 1.1rem;
-    }
-
-    .nav-dropdown {
-        position: absolute;
-        top: calc(100% + 2px);
-        right: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(0, 201, 255, 0.2);
-        min-width: 220px;
-        z-index: 100;
-        overflow: hidden;
-        padding-top: 6px;
-    }
-
-    .nav-dropdown::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background-image: var(--gradient-primary);
-    }
-
-    .nav-dropdown a {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 20px;
-        text-decoration: none;
-        color: var(--text-dark);
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        border-left: 3px solid transparent;
-    }
-
-    .nav-dropdown a i {
-        width: 18px;
-        text-align: center;
-        font-size: 1rem;
-        color: #6c757d;
-    }
-
-    .nav-dropdown a:hover {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
-        border-left-color: rgb(0, 201, 255);
-        padding-left: 24px;
-    }
-
-    .nav-dropdown a:hover i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.active {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
-        border-left-color: rgb(0, 201, 255);
-        color: rgb(0, 201, 255);
-        font-weight: 600;
-    }
-
-    .nav-dropdown a.active i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.logout {
-        border-top: 1px solid var(--border-light);
-        margin-top: 6px;
-        color: #dc3545;
-    }
-
-    .nav-dropdown a.logout:hover {
-        background: rgba(220, 53, 69, 0.08);
-        border-left-color: #dc3545;
-    }
-
-    .nav-dropdown a.logout i {
-        color: #dc3545;
-    }
-
-    [x-cloak] { display: none !important; }
+[x-cloak] { display: none !important; }
 
     /* Add User Button */
     .btn-add {
@@ -476,13 +365,130 @@ $extraCss = <<<CSS
 
     @media (max-width: 768px) {
         .page-header {
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        .page-header h2 {
+            font-size: 1.1rem;
+            white-space: nowrap;
         }
 
         .page-header-right {
-            width: 100%;
-            justify-content: space-between;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .btn-add {
+            padding: 8px 12px;
+            font-size: 0.75rem;
+        }
+
+        .btn-add span {
+            display: none;
+        }
+
+        /* Collapsible sections */
+        .section-title {
+            cursor: pointer;
+            user-select: none;
+            margin: 20px 0 10px 0;
+        }
+
+        .section-title .toggle-icon {
+            margin-left: auto;
+            transition: transform 0.2s ease;
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+
+        .section-title .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        /* Card layout for tables */
+        .card {
+            overflow: visible;
+            border: none;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        table {
+            min-width: 0;
+        }
+
+        thead {
+            display: none;
+        }
+
+        tbody {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        tr {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        td {
+            border: none;
+            padding: 2px 0;
+            font-size: 0.8rem;
+        }
+
+        td::before {
+            content: attr(data-label);
+            display: block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a0aec0;
+            margin-bottom: 2px;
+        }
+
+        /* Name spans full width */
+        td.col-name {
+            grid-column: 1 / -1;
+            border-bottom: 1px solid #f0f1f3;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        /* Actions span full width */
+        td.col-act {
+            grid-column: 1 / -1;
+            text-align: left;
+            border-top: 1px solid #f0f1f3;
+            padding-top: 8px;
+            margin-top: 4px;
+            display: flex;
+            gap: 8px;
+        }
+
+        td.col-act a {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+            border-radius: 8px;
+        }
+
+        /* Hide email and payment info on mobile */
+        .col-hide-mobile {
+            display: none;
         }
     }
 CSS;
@@ -496,31 +502,13 @@ require_once 'includes/header.php';
     <h2><i class="fas fa-users"></i> Manage Users</h2>
     <div class="page-header-right">
         <?php if (isAdmin()): ?>
-            <a href="user_form.php" class="btn-add"><i class="fas fa-plus"></i> Add New User</a>
+            <a href="user_form.php" class="btn-add"><i class="fas fa-plus"></i> <span>Add New User</span></a>
         <?php endif; ?>
-        <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
-            <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
-                <i class="fas fa-bars"></i>
-                <span>Menu</span>
-            </button>
-            <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
-                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
-                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
-                <?php if (canManage()): ?>
-                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
-                    <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
-                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
-                    <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
-                    <a href="users.php" class="active"><i class="fas fa-users"></i> Users</a>
-                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
-                <?php endif; ?>
-                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
+        <?php include 'includes/nav-menu.php'; ?>
     </div>
 </div>
 
-<div class="section-title"><i class="fas fa-user-shield"></i> Management & Admin</div>
+<div class="section-title" onclick="toggleSection(this)"><i class="fas fa-user-shield"></i> Management & Admin <i class="fas fa-chevron-down toggle-icon"></i></div>
 <div class="card">
     <table>
         <thead>
@@ -537,15 +525,15 @@ require_once 'includes/header.php';
         <tbody>
             <?php foreach ($management as $u): ?>
                 <tr class="<?= $u['is_active'] ? '' : 'inactive-row' ?>">
-                    <td class="col-name">
+                    <td class="col-name" data-label="Name">
                         <?= e($u['name']) ?>
                         <?php if (!$u['is_active']): ?><span class="inactive-badge">INACTIVE</span><?php endif; ?>
                     </td>
-                    <td><span class="badge role-<?= $u['role'] ?>"><?= ucfirst($u['role']) ?></span></td>
-                    <td><?= e($u['email']) ?></td>
-                    <td>$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
-                    <td><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
-                    <td>
+                    <td data-label="Role"><span class="badge role-<?= $u['role'] ?>"><?= ucfirst($u['role']) ?></span></td>
+                    <td data-label="Email" class="col-hide-mobile"><?= e($u['email']) ?></td>
+                    <td data-label="Rates">$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
+                    <td data-label="Frequency"><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
+                    <td data-label="Payment" class="col-hide-mobile">
                         <span class="pay-method"><?= strtoupper($u['payment_method'] ?? 'ADP') ?></span>
                         <?php if (!empty($u['payment_info'])): ?><div class="pay-info" title="<?= e($u['payment_info']) ?>"><?= e($u['payment_info']) ?></div><?php endif; ?>
                     </td>
@@ -569,7 +557,7 @@ require_once 'includes/header.php';
     $loc_users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     if (empty($loc_users)) continue;
 ?>
-    <div class="section-title"><i class="fas fa-map-marker-alt"></i> <?= e($loc['name']) ?></div>
+    <div class="section-title" onclick="toggleSection(this)"><i class="fas fa-map-marker-alt"></i> <?= e($loc['name']) ?> <i class="fas fa-chevron-down toggle-icon"></i></div>
     <div class="card">
         <table>
             <thead>
@@ -586,20 +574,20 @@ require_once 'includes/header.php';
             <tbody>
                 <?php foreach ($loc_users as $u): ?>
                     <tr class="<?= $u['is_active'] ? '' : 'inactive-row' ?>">
-                        <td class="col-name">
+                        <td class="col-name" data-label="Name">
                             <span class="color-dot" style="background:<?= e($u['color_code']) ?>"></span>
                             <?= e($u['name']) ?>
                             <?php if (!$u['is_active']): ?><span class="inactive-badge">INACTIVE</span><?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Type">
                             <?php foreach (explode(',', $u['coach_type']) as $type): $type = trim($type); ?>
                                 <span class="badge type-<?= $type ?>"><?= strtoupper($type) ?></span>
                             <?php endforeach; ?>
                         </td>
-                        <td><?= e($u['email']) ?></td>
-                        <td>$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
-                        <td><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
-                        <td>
+                        <td data-label="Email" class="col-hide-mobile"><?= e($u['email']) ?></td>
+                        <td data-label="Rates">$<?= number_format($u['rate_head_coach'], 0) ?> / $<?= number_format($u['rate_helper'], 0) ?></td>
+                        <td data-label="Frequency"><?= ucfirst($u['payment_frequency'] ?? 'weekly') ?></td>
+                        <td data-label="Payment" class="col-hide-mobile">
                             <span class="pay-method"><?= strtoupper($u['payment_method'] ?? 'ADP') ?></span>
                             <?php if (!empty($u['payment_info'])): ?><div class="pay-info" title="<?= e($u['payment_info']) ?>"><?= e($u['payment_info']) ?></div><?php endif; ?>
                         </td>
@@ -633,5 +621,20 @@ require_once 'includes/header.php';
 </div>
 
 </div>
+
+<script>
+function toggleSection(el) {
+    if (window.innerWidth > 768) return;
+    const card = el.nextElementSibling;
+    const icon = el.querySelector('.toggle-icon');
+    if (card.style.display === 'none') {
+        card.style.display = '';
+        icon.classList.remove('collapsed');
+    } else {
+        card.style.display = 'none';
+        icon.classList.add('collapsed');
+    }
+}
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

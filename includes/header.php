@@ -38,6 +38,7 @@
 
     <!-- Design System & Custom Styles -->
     <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/nav-menu.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <?php if (isset($extraHead)): ?>
     <?= $extraHead ?>

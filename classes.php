@@ -169,118 +169,7 @@ $extraCss = <<<CSS
             font-size: 1.75rem;
         }
     }
-
-    /* Navigation Menu */
-    .nav-menu {
-        position: relative;
-    }
-
-    .nav-menu-btn {
-        padding: 10px 18px;
-        background: white;
-        color: #2c3e50;
-        border: 2px solid #e8ecf2;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-menu-btn:hover {
-        background: rgba(0, 201, 255, 0.05);
-        border-color: rgba(0, 201, 255, 0.3);
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-menu-btn i {
-        font-size: 1.1rem;
-    }
-
-    .nav-dropdown {
-        position: absolute;
-        top: calc(100% + 2px);
-        right: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(0, 201, 255, 0.2);
-        min-width: 220px;
-        z-index: 100;
-        overflow: hidden;
-        padding-top: 6px;
-    }
-
-    .nav-dropdown::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background-image: var(--gradient-primary);
-    }
-
-    .nav-dropdown a {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 20px;
-        text-decoration: none;
-        color: var(--text-dark);
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        border-left: 3px solid transparent;
-    }
-
-    .nav-dropdown a i {
-        width: 18px;
-        text-align: center;
-        font-size: 1rem;
-        color: #6c757d;
-    }
-
-    .nav-dropdown a:hover {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
-        border-left-color: rgb(0, 201, 255);
-        padding-left: 24px;
-    }
-
-    .nav-dropdown a:hover i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.active {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
-        border-left-color: rgb(0, 201, 255);
-        color: rgb(0, 201, 255);
-        font-weight: 600;
-    }
-
-    .nav-dropdown a.active i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.logout {
-        border-top: 1px solid var(--border-light);
-        margin-top: 6px;
-        color: #dc3545;
-    }
-
-    .nav-dropdown a.logout:hover {
-        background: rgba(220, 53, 69, 0.08);
-        border-left-color: #dc3545;
-    }
-
-    .nav-dropdown a.logout i {
-        color: #dc3545;
-    }
-
-    [x-cloak] { display: none !important; }
+[x-cloak] { display: none !important; }
 
     .inline-block {
         display: inline-block;
@@ -290,6 +179,7 @@ $extraCss = <<<CSS
         display: flex;
         gap: 8px;
         align-items: center;
+        margin-bottom: 20px;
     }
 
     .toggle-container a,
@@ -301,9 +191,11 @@ $extraCss = <<<CSS
         font-weight: 600;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
         cursor: pointer;
         transition: all 0.2s;
+        flex: 1;
     }
 
     .toggle-active {
@@ -333,7 +225,7 @@ $extraCss = <<<CSS
         font-weight: 700;
     }
 
-    .main-layout {
+    .page-layout {
         display: flex;
         gap: 25px;
         align-items: flex-start;
@@ -341,7 +233,9 @@ $extraCss = <<<CSS
 
     /* LEFT COLUMN: FORM */
     .form-card {
-            flex: 0 0 350px;
+            flex: 0 0 auto;
+            width: 350px;
+            align-self: flex-start;
             background: white;
             padding: 25px;
             border-radius: 8px;
@@ -753,13 +647,203 @@ $extraCss = <<<CSS
         }
 
         @media (max-width: 900px) {
-            .main-layout {
+            .page-layout {
                 flex-direction: column;
             }
 
             .form-card {
                 width: 100%;
                 position: static;
+            }
+
+            .list-container {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+
+            .page-header {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                align-items: center;
+            }
+
+            .page-header h2 {
+                font-size: 1.1rem;
+                white-space: nowrap;
+            }
+
+            .page-header-right {
+                flex-shrink: 0;
+                gap: 8px;
+            }
+
+            .toggle-container {
+                gap: 4px;
+            }
+
+            .toggle-container a,
+            .toggle-container span.toggle-btn {
+                padding: 6px 10px;
+                font-size: 0.7rem;
+            }
+
+            /* Accordion form */
+            .form-card {
+                padding: 0;
+                box-shadow: none;
+                background: transparent;
+                border-radius: 0;
+                margin-bottom: 20px;
+            }
+
+            .form-card h3 {
+                background: white;
+                margin: 0;
+                padding: 14px 16px;
+                border-radius: 12px;
+                border: 1px solid var(--border-light);
+                box-shadow: var(--shadow-sm);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 1rem;
+            }
+
+            .form-card h3::after {
+                content: "\\f078";
+                font-family: "Font Awesome 6 Free";
+                font-weight: 900;
+                font-size: 0.7rem;
+                color: #a0aec0;
+                margin-left: auto;
+                transition: transform 0.2s ease;
+            }
+
+            .form-card h3.collapsed::after {
+                transform: rotate(-90deg);
+            }
+
+            .form-card .form-body {
+                background: white;
+                border-radius: 0 0 12px 12px;
+                padding: 16px;
+                margin-top: -4px;
+                border: 1px solid var(--border-light);
+                border-top: none;
+            }
+
+            .form-card .form-body.hidden {
+                display: none;
+            }
+
+            .form-card h3.collapsed {
+                border-radius: 12px;
+            }
+
+            .form-card input,
+            .form-card select {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                margin-bottom: 12px;
+            }
+
+            .form-card label {
+                margin-top: 8px;
+                margin-bottom: 4px;
+            }
+
+            /* Table → card layout */
+            .loc-group {
+                border-radius: 12px;
+                overflow: visible;
+            }
+
+            .loc-header {
+                padding: 12px 16px;
+                font-size: 0.95em;
+                border-radius: 12px 12px 0 0;
+            }
+
+            table {
+                display: block;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody {
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+
+            tr {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                gap: 2px 10px;
+                padding: 10px 14px;
+                align-items: center;
+                border-bottom: 1px solid #f0f1f3;
+            }
+
+            tr:last-child {
+                border-bottom: none;
+            }
+
+            td {
+                border: none;
+                padding: 0;
+                font-size: 0.8rem;
+            }
+
+            /* Day - col 1 */
+            td:nth-child(1) {
+                grid-row: 1;
+                grid-column: 1;
+                font-weight: 700;
+                color: var(--text-dark);
+                font-size: 0.85rem;
+            }
+
+            /* Time - col 2 */
+            td:nth-child(2) {
+                grid-row: 1;
+                grid-column: 2;
+                color: var(--text-secondary);
+            }
+
+            /* Type - col 1 row 2 */
+            td:nth-child(3) {
+                grid-row: 2;
+                grid-column: 1;
+            }
+
+            /* Class Name - col 2 row 2 */
+            td:nth-child(4) {
+                grid-row: 2;
+                grid-column: 2;
+                color: var(--text-dark);
+            }
+
+            /* Actions - spans both rows, right side */
+            td:nth-child(5) {
+                grid-row: 1 / 3;
+                grid-column: 3;
+                text-align: center;
+            }
+
+            td:nth-child(5) .actions {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .row-inactive td:nth-child(5) .actions {
+                flex-direction: row;
             }
         }
 CSS;
@@ -784,104 +868,88 @@ require_once 'includes/header.php';
 <div class="page-header">
     <h2><i class="fas fa-graduation-cap"></i> Manage Classes</h2>
     <div class="page-header-right">
-        <div class="toggle-container">
-            <?php if ($show_inactive): ?>
-                <a href="classes.php" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '0');">
-                    <i class="fas fa-check-circle"></i> Active Only
-                </a>
-                <span class="toggle-btn toggle-active"><i class="fas fa-eye"></i> Showing All</span>
-            <?php else: ?>
-                <span class="toggle-btn toggle-active"><i class="fas fa-check-circle"></i> Active Only</span>
-                <a href="classes.php?show_inactive=1" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '1');">
-                    <i class="fas fa-eye"></i> Show Inactive
-                    <?php if ($inactive_count > 0): ?>
-                        <span class="inactive-badge"><?= $inactive_count ?></span>
-                    <?php endif; ?>
-                </a>
-            <?php endif; ?>
-        </div>
-        <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
-            <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
-                <i class="fas fa-bars"></i>
-                <span>Menu</span>
-            </button>
-            <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
-                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
-                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
-                <?php if (canManage()): ?>
-                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
-                    <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
-                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
-                    <a href="classes.php" class="active"><i class="fas fa-graduation-cap"></i> Class Templates</a>
-                    <a href="users.php"><i class="fas fa-users"></i> Users</a>
-                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
-                <?php endif; ?>
-                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
+        <?php include 'includes/nav-menu.php'; ?>
     </div>
 </div>
 
-    <div class="main-layout">
+<div class="toggle-container">
+    <?php if ($show_inactive): ?>
+        <a href="classes.php" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '0');">
+            <i class="fas fa-check-circle"></i> Active Only
+        </a>
+        <span class="toggle-btn toggle-active"><i class="fas fa-eye"></i> Showing All</span>
+    <?php else: ?>
+        <span class="toggle-btn toggle-active"><i class="fas fa-check-circle"></i> Active Only</span>
+        <a href="classes.php?show_inactive=1" class="toggle-btn toggle-inactive-btn" onclick="localStorage.setItem('classes_show_inactive', '1');">
+            <i class="fas fa-eye"></i> Show Inactive
+            <?php if ($inactive_count > 0): ?>
+                <span class="inactive-badge"><?= $inactive_count ?></span>
+            <?php endif; ?>
+        </a>
+    <?php endif; ?>
+</div>
 
-        <div class="form-card">
-            <h3 id="form-title"><i class="fas fa-calendar-plus"></i> Add New Class</h3>
-            <?= $msg ?>
-            <form method="POST" id="classForm">
-                <input type="hidden" name="action" value="save">
-                <input type="hidden" name="template_id" id="template_id">
-                <input type="hidden" name="original_day" id="original_day">
+<div class="page-layout">
+    <div class="form-card">
+        <h3 id="form-title" onclick="toggleForm(this)"><i class="fas fa-calendar-plus"></i> Add New Class</h3>
+        <div class="form-body" id="form-body">
+        <?= $msg ?>
+        <form method="POST" id="classForm">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="template_id" id="template_id">
+            <input type="hidden" name="original_day" id="original_day">
 
-                <label>Class Name <small class="text-gray-500 font-normal">(optional)</small></label>
-                <input type="text" name="class_name" id="class_name" placeholder="e.g. Fundamentals">
+            <label>Class Name <small class="text-gray-500 font-normal">(optional)</small></label>
+            <input type="text" name="class_name" id="class_name" placeholder="e.g. Fundamentals">
 
-                <div class="row">
-                    <div class="col">
-                        <label>Location</label>
-                        <select name="location_id" id="location_id" required>
-                            <option value="">Select...</option>
-                            <?php foreach ($locations as $l): ?>
-                                <option value="<?= $l['id'] ?>"><?= $l['name'] ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label>Type</label>
-                        <select name="martial_art" id="martial_art">
-                            <option value="bjj">BJJ</option>
-                            <option value="mt">Muay Thai</option>
-                            <option value="mma">MMA</option>
-                        </select>
-                    </div>
+            <div class="row">
+                <div class="col">
+                    <label>Location</label>
+                    <select name="location_id" id="location_id" required>
+                        <option value="">Select...</option>
+                        <?php foreach ($locations as $l): ?>
+                            <option value="<?= $l['id'] ?>"><?= $l['name'] ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-
-                <label>Days of Week (Select multiple for bulk add)</label>
-                <div class="days-grid">
-                    <?php foreach ($days_of_week as $d): ?>
-                        <div class="day-option">
-                            <input type="checkbox" name="days[]" value="<?= $d ?>" id="day_<?= $d ?>">
-                            <label for="day_<?= $d ?>" class="m-0 font-normal"><?= $d ?></label>
-                        </div>
-                    <?php endforeach; ?>
+                <div class="col">
+                    <label>Type</label>
+                    <select name="martial_art" id="martial_art">
+                        <option value="bjj">BJJ</option>
+                        <option value="mt">Muay Thai</option>
+                        <option value="mma">MMA</option>
+                    </select>
                 </div>
+            </div>
 
-                <div class="row">
-                    <div class="col">
-                        <label>Start Time</label>
-                        <input type="time" name="start_time" id="start_time" required>
+            <label>Days of Week (Select multiple for bulk add)</label>
+            <div class="days-grid">
+                <?php foreach ($days_of_week as $d): ?>
+                    <div class="day-option">
+                        <input type="checkbox" name="days[]" value="<?= $d ?>" id="day_<?= $d ?>">
+                        <label for="day_<?= $d ?>" class="m-0 font-normal"><?= $d ?></label>
                     </div>
-                    <div class="col">
-                        <label>End Time</label>
-                        <input type="time" name="end_time" id="end_time" required>
-                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <label>Start Time</label>
+                    <input type="time" name="start_time" id="start_time" required>
                 </div>
+                <div class="col">
+                    <label>End Time</label>
+                    <input type="time" name="end_time" id="end_time" required>
+                </div>
+            </div>
 
-                <button type="submit" class="btn-save" id="btn-submit">Save Classes</button>
-                <button type="button" class="btn-reset" onclick="resetForm()">Clear Form</button>
-            </form>
-        </div>
+            <button type="submit" class="btn-save" id="btn-submit">Save Classes</button>
+            <button type="button" class="btn-reset" onclick="resetForm()">Clear Form</button>
+        </form>
+        </div><!-- .form-body -->
+    </div>
 
-        <div class="list-container">
+    <div class="list-container">
 
             <?php foreach ($grouped_classes as $lid => $group): ?>
                 <div class="loc-group">
@@ -980,10 +1048,22 @@ require_once 'includes/header.php';
                     </table>
                 </div>
             <?php endforeach; ?>
-        </div>
-    </div>
+        </div><!-- .list-container -->
+    </div><!-- .page-layout -->
 
     <script>
+        function toggleForm(el) {
+            if (window.innerWidth > 768) return;
+            const body = document.getElementById('form-body');
+            body.classList.toggle('hidden');
+            el.classList.toggle('collapsed');
+        }
+        // Auto-collapse form on mobile load
+        if (window.innerWidth <= 768) {
+            document.getElementById('form-body').classList.add('hidden');
+            document.getElementById('form-title').classList.add('collapsed');
+        }
+
         function filterTable(lid) {
             // Get filter values
             const dayFilter = document.getElementById('filter-day-' + lid).value.toLowerCase();
@@ -1033,6 +1113,12 @@ require_once 'includes/header.php';
             if (dayCheck) dayCheck.checked = true;
 
             document.getElementById('btn-submit').innerText = "Update Class";
+
+            // Auto-expand accordion on mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('form-body').classList.remove('hidden');
+                document.getElementById('form-title').classList.remove('collapsed');
+            }
 
             // Scroll to top
             if (window.innerWidth < 900) {

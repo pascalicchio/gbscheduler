@@ -286,6 +286,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 
 <head>
     <title>GB Schedule</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="assets/favicon.png">
 
     <!-- Alpine.js -->
@@ -298,6 +299,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
 
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/nav-menu.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <style>
@@ -1134,6 +1136,10 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             display: none;
         }
 
+        .mobile-banner {
+            display: none;
+        }
+
         @media (max-width: 768px) {
             body {
                 display: block;
@@ -1178,87 +1184,22 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 color: var(--secondary-dark);
             }
 
-            /* Nav Menu - Standard Pattern */
-            .nav-menu {
-                position: relative;
-            }
-
-            .nav-menu-btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 10px 18px;
-                background-image: linear-gradient(135deg, #1a202c, #2d3748);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                font-weight: 700;
-                font-size: 0.9rem;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-
-            .nav-menu-btn:hover {
-                background-image: linear-gradient(135deg, #2d3748, #4a5568);
-                transform: translateY(-1px);
-            }
-
-            .nav-dropdown {
-                position: absolute;
-                right: 0;
-                top: 100%;
-                margin-top: 8px;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-                border: 1px solid #e8ecf2;
-                min-width: 220px;
-                z-index: 1000;
-                overflow: hidden;
-            }
-
-            .nav-dropdown a {
+            /* Mobile Banner */
+            .mobile-banner {
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                padding: 12px 20px;
-                color: var(--text-color);
-                text-decoration: none;
+                gap: 10px;
+                background: linear-gradient(135deg, #1a202c, #2d3748);
+                color: rgba(255, 255, 255, 0.85);
+                padding: 10px 20px;
+                font-size: 0.75rem;
                 font-weight: 500;
-                font-size: 0.95rem;
-                transition: all 0.2s ease;
-                border-left: 3px solid transparent;
             }
 
-            .nav-dropdown a:hover {
-                background: linear-gradient(to right, rgba(0,201,255,0.08), transparent);
-                border-left-color: rgb(0, 201, 255);
-                padding-left: 24px;
-            }
-
-            .nav-dropdown a i {
-                width: 18px;
-                text-align: center;
-                color: #a0aec0;
-                font-size: 0.95rem;
-            }
-
-            .nav-dropdown a:hover i {
+            .mobile-banner i {
                 color: rgb(0, 201, 255);
-            }
-
-            .nav-dropdown a.logout {
-                border-top: 1px solid #f0f0f0;
-                color: #e53e3e;
-            }
-
-            .nav-dropdown a.logout:hover {
-                background: linear-gradient(to right, rgba(229, 62, 62, 0.06), transparent);
-                border-left-color: #e53e3e;
-            }
-
-            .nav-dropdown a.logout i {
-                color: #e53e3e;
+                font-size: 0.85rem;
+                flex-shrink: 0;
             }
 
             /* Mobile Filters */
@@ -1446,24 +1387,13 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
     <!-- Mobile Header + Menu (hidden on desktop) -->
     <div class="mobile-header">
         <h2><i class="fas fa-calendar-alt" style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-right: 8px;"></i> GB Schedule</h2>
-        <div class="nav-menu" x-data="{ open: false }">
-            <button @click="open = !open" class="nav-menu-btn">
-                <i class="fas fa-bars"></i>
-            </button>
-            <div x-show="open" @click.away="open = false" x-cloak class="nav-dropdown">
-                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
-                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
-                <?php if (canManage()): ?>
-                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
-                    <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
-                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
-                    <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
-                    <a href="users.php"><i class="fas fa-users"></i> Users</a>
-                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
-                <?php endif; ?>
-                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
+        <?php include 'includes/nav-menu.php'; ?>
+    </div>
+
+    <!-- Mobile Desktop Banner (hidden on desktop) -->
+    <div class="mobile-banner">
+        <i class="fas fa-desktop"></i>
+        <span>Viewing in read-only mode. Open on desktop for full editing features.</span>
     </div>
 
     <!-- Mobile Filters (hidden on desktop) -->

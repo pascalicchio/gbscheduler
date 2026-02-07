@@ -433,9 +433,14 @@ $extraHead = <<<HTML
 HTML;
 
 $extraCss = <<<CSS
-    body { padding: 20px; }
+    body { padding: 16px; }
 
     [x-cloak] { display: none !important; }
+
+    /* CSS Variables */
+    :root {
+        --gradient-dark: linear-gradient(135deg, #1a202c, #2d3748);
+    }
 
     /* Page Header */
     .page-header {
@@ -461,156 +466,48 @@ $extraCss = <<<CSS
     }
 
     @media (min-width: 768px) {
+        body { padding: 20px; }
         .page-header h2 {
             font-size: 1.75rem;
         }
     }
 
-    /* Navigation Menu */
-    .nav-menu {
+    /* Tabs */
+    .tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        padding: 10px 18px;
+        border: 2px solid #e2e8f0;
+        background: white;
+        cursor: pointer;
+        font-weight: 600;
+        color: #6c757d;
+        transition: all 0.25s ease;
+        border-radius: 10px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
         position: relative;
     }
 
-    .nav-menu-btn {
-        padding: 10px 18px;
-        background: white;
-        color: #2c3e50;
-        border: 2px solid #e8ecf2;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-menu-btn:hover {
+    .tab-btn:hover {
         background: rgba(0, 201, 255, 0.05);
         border-color: rgba(0, 201, 255, 0.3);
         color: rgb(0, 201, 255);
     }
 
-    .nav-menu-btn i {
-        font-size: 1.1rem;
-    }
-
-    .nav-dropdown {
-        position: absolute;
-        top: calc(100% + 2px);
-        right: 0;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-        border: 1px solid rgba(0, 201, 255, 0.2);
-        min-width: 220px;
-        z-index: 100;
-        overflow: hidden;
-        padding-top: 6px;
-    }
-
-    .nav-dropdown::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
-    }
-
-    .nav-dropdown a {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 20px;
-        text-decoration: none;
-        color: #2c3e50;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s ease;
-        border-left: 3px solid transparent;
-    }
-
-    .nav-dropdown a i {
-        width: 18px;
-        text-align: center;
-        font-size: 1rem;
-        color: #6c757d;
-    }
-
-    .nav-dropdown a:hover {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.08), transparent);
-        border-left-color: rgb(0, 201, 255);
-        padding-left: 24px;
-    }
-
-    .nav-dropdown a:hover i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.active {
-        background: linear-gradient(to right, rgba(0, 201, 255, 0.12), transparent);
-        border-left-color: rgb(0, 201, 255);
-        color: rgb(0, 201, 255);
-        font-weight: 600;
-    }
-
-    .nav-dropdown a.active i {
-        color: rgb(0, 201, 255);
-    }
-
-    .nav-dropdown a.logout {
-        border-top: 1px solid #e8ecf2;
-        margin-top: 6px;
-        color: #dc3545;
-    }
-
-    .nav-dropdown a.logout:hover {
-        background: rgba(220, 53, 69, 0.08);
-        border-left-color: #dc3545;
-    }
-
-    .nav-dropdown a.logout i {
-        color: #dc3545;
-    }
-
-    .tabs {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 20px;
-    }
-
-    .tab-btn {
-        padding: 12px 24px;
-        border: none;
-        background: white;
-        cursor: pointer;
-        font-weight: 600;
-        color: #666;
-        transition: all 0.2s;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .tab-btn:hover {
-        background: #f0f7ff;
-        color: var(--primary);
-    }
-
     .tab-btn.active {
         color: white;
-        background: var(--primary);
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-    }
-
-    .tab-btn {
-        position: relative;
+        background: var(--gradient-dark);
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .tab-badge {
@@ -619,22 +516,24 @@ $extraCss = <<<CSS
         right: -6px;
         background: #dc3545;
         color: white;
-        font-size: 0.7em;
+        font-size: 0.65em;
         font-weight: bold;
         padding: 2px 6px;
         border-radius: 10px;
-        min-width: 20px;
+        min-width: 18px;
         text-align: center;
     }
 
+    /* Controls / Filters */
     .controls {
         background: white;
-        padding: 15px;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
+        padding: 14px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
         display: flex;
-        gap: 15px;
-        align-items: center;
+        gap: 12px;
+        align-items: flex-end;
         margin-bottom: 20px;
         flex-wrap: wrap;
     }
@@ -642,66 +541,106 @@ $extraCss = <<<CSS
     .form-group {
         display: flex;
         flex-direction: column;
+        flex: 1;
+        min-width: 120px;
     }
 
     .form-group label {
-        font-size: 0.8em;
-        font-weight: bold;
-        margin-bottom: 4px;
-        color: #555;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #2c3e50;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .form-group input[type="text"],
     .form-group select {
-        min-width: 140px;
-        height: 38px;
+        height: 40px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #2c3e50;
+        transition: all 0.2s ease;
     }
 
-    .form-group .btn {
-        height: 38px;
+    .form-group input[type="text"]:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
     }
 
-    .summary-bar {
-        background: #2c3e50;
+    .btn-apply {
+        height: 40px;
+        padding: 0 20px;
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
         color: white;
-        padding: 20px;
-        border-radius: var(--radius);
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+    .btn-apply:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 201, 255, 0.3);
+    }
+
+    /* Summary Bar - Design System Dark Gradient */
+    .summary-bar {
+        background-image: var(--gradient-dark);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
         margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     }
 
     .summary-bar h3 {
-        margin: 0 0 5px 0;
-        font-size: 0.9em;
-        opacity: 0.8;
-        font-weight: normal;
-        color: #fff;
+        margin: 0 0 4px 0;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .summary-bar .big-number {
-        font-size: 1.6em;
-        font-weight: bold;
+        font-size: 1.3em;
+        font-weight: 800;
+        color: white;
     }
 
+    /* Payment Table */
     .payment-table {
         width: 100%;
         background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
         overflow: hidden;
     }
 
     .payment-table th {
-        background: #f8f9fa;
-        padding: 12px 16px;
+        background: var(--gradient-dark);
+        padding: 12px 10px;
         text-align: center;
-        font-size: 0.85em;
+        font-size: 0.75rem;
         text-transform: uppercase;
-        color: #666;
-        border-bottom: 2px solid #e9ecef;
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 700;
+        letter-spacing: 0.05em;
     }
 
     .payment-table th:first-child {
@@ -709,47 +648,35 @@ $extraCss = <<<CSS
     }
 
     .payment-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid #eee;
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
         text-align: center;
+        font-size: 0.85rem;
     }
 
     .payment-table td:first-child {
         text-align: left;
     }
 
-    /* Column widths - updated for new columns */
-    .payment-table th:nth-child(1) { width: 12%; }  /* Coach */
-    .payment-table th:nth-child(2) { width: 5%; }   /* Classes */
-    .payment-table th:nth-child(3) { width: 8%; }   /* Regular */
-    .payment-table th:nth-child(4) { width: 8%; }   /* Private */
-    .payment-table th:nth-child(5) { width: 8%; }   /* Salary */
-    .payment-table th:nth-child(6) { width: 9%; }   /* Commission */
-    .payment-table th:nth-child(7) { width: 8%; }   /* Deduction */
-    .payment-table th:nth-child(8) { width: 9%; }   /* Total Owed */
-    .payment-table th:nth-child(9) { width: 8%; }   /* Total Paid */
-    .payment-table th:nth-child(10) { width: 8%; }  /* Balance Due */
-    .payment-table th:nth-child(11) { width: 9%; }  /* Status */
-    .payment-table th:nth-child(12) { width: 8%; }  /* Action */
+    .payment-table tbody tr:hover {
+        background-color: rgba(0, 201, 255, 0.04);
+    }
 
     .text-danger { color: #dc3545; }
+    .text-right { text-align: right; }
+    .text-success { color: rgb(0, 201, 255); }
+    .font-bold { font-weight: 700; }
 
-    .payment-table tbody tr:nth-child(even) {
-        background-color: #f8f9fa;
-    }
-
-    .payment-table tbody tr:hover {
-        background-color: #e9ecef;
-    }
-
+    /* Status Badges */
     .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.85em;
+        border-radius: 8px;
+        font-size: 0.75em;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .status-paid {
@@ -767,35 +694,41 @@ $extraCss = <<<CSS
         color: #721c24;
     }
 
-    .text-right { text-align: right; }
-    .text-success { color: var(--success); }
-    .font-bold { font-weight: bold; }
-
+    /* Buttons */
     .btn-pay {
-        background: var(--success);
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
         color: white;
         border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 6px 14px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 0.85em;
-        font-weight: 600;
-        width: 120px;
+        font-size: 0.8em;
+        font-weight: 700;
+        white-space: nowrap;
     }
 
     .btn-pay:hover {
-        background: #218838;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 201, 255, 0.3);
     }
 
     .btn-view {
-        background: #6c757d;
+        background: var(--gradient-dark);
         color: white;
         border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 6px 14px;
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 0.85em;
-        width: 120px;
+        font-size: 0.8em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .btn-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px;
     }
 
     /* Modal styles */
@@ -818,15 +751,16 @@ $extraCss = <<<CSS
 
     .modal {
         background: white;
-        border-radius: var(--radius);
+        border-radius: 12px;
         width: 100%;
         max-width: 450px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        margin: 16px;
     }
 
     .modal-header {
         padding: 15px 20px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid #e2e8f0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -834,6 +768,8 @@ $extraCss = <<<CSS
 
     .modal-header h3 {
         margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
     }
 
     .modal-close {
@@ -856,25 +792,56 @@ $extraCss = <<<CSS
     .modal-body select,
     .modal-body textarea {
         width: 100%;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .modal-body input:focus,
+    .modal-body select:focus,
+    .modal-body textarea:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
     }
 
     .modal-footer {
         padding: 15px 20px;
-        border-top: 1px solid #eee;
+        border-top: 1px solid #e2e8f0;
         display: flex;
         justify-content: flex-end;
         gap: 10px;
     }
 
+    .modal-footer .btn {
+        padding: 8px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border: none;
+    }
+
+    .modal-footer .btn-primary {
+        background-image: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+        color: white;
+    }
+
+    .modal-footer .btn-secondary {
+        background: #e2e8f0;
+        color: #2c3e50;
+    }
+
     .empty-state {
         text-align: center;
         padding: 60px 20px;
-        color: #666;
+        color: #6c757d;
     }
 
     .empty-state i {
         font-size: 3em;
-        color: #ddd;
+        color: #cbd5e0;
         margin-bottom: 15px;
     }
 
@@ -892,16 +859,173 @@ $extraCss = <<<CSS
         flex: 1;
         min-width: 70px;
         padding: 6px 8px;
-        border: 1px solid #ddd;
+        border: 2px solid #e2e8f0;
         background: white;
-        border-radius: 4px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 0.75em;
+        font-weight: 600;
     }
 
     .flatpickr-presets button:hover {
-        background: #e9ecef;
-        border-color: #007bff;
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.3);
+    }
+
+    /* ======================================== */
+    /* Mobile Responsive */
+    /* ======================================== */
+    @media (max-width: 768px) {
+        /* Flatpickr mobile input fix */
+        .flatpickr-input.flatpickr-mobile {
+            margin-bottom: 0 !important;
+        }
+
+        /* Tabs - compact */
+        .tabs {
+            gap: 4px;
+        }
+
+        .tab-btn {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            gap: 4px;
+            flex: 1;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .tab-btn i {
+            display: none;
+        }
+
+        /* Controls - 2 col grid */
+        .controls {
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .form-group {
+            min-width: calc(50% - 4px);
+            flex: 1 1 calc(50% - 4px);
+        }
+
+        .form-group label {
+            font-size: 0.65rem;
+            margin-bottom: 4px;
+        }
+
+        .form-group input[type="text"],
+        .form-group select {
+            height: 34px;
+            font-size: 0.8rem;
+            padding: 0 8px;
+            margin-bottom: 0;
+        }
+
+        .btn-apply {
+            display: none;
+        }
+
+        /* Summary bar - compact horizontal */
+        .summary-bar {
+            padding: 12px 14px;
+            gap: 4px 12px;
+            flex-wrap: wrap;
+        }
+
+        .summary-bar > div {
+            flex: 0 0 auto;
+        }
+
+        .summary-bar h3 {
+            font-size: 0.6rem;
+            margin-bottom: 2px;
+        }
+
+        .summary-bar .big-number {
+            font-size: 0.9em;
+        }
+
+        /* Table → card layout on mobile */
+        .payment-table {
+            border: none;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .payment-table thead {
+            display: none;
+        }
+
+        .payment-table tbody {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .payment-table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .payment-table tbody tr:hover {
+            background: white;
+        }
+
+        .payment-table td {
+            border: none;
+            padding: 2px 0;
+            text-align: left;
+            font-size: 0.8rem;
+        }
+
+        .payment-table td::before {
+            content: attr(data-label);
+            display: block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a0aec0;
+            margin-bottom: 2px;
+        }
+
+        /* Coach name spans full width */
+        .payment-table td:first-child {
+            grid-column: 1 / -1;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        /* Action spans full width */
+        .payment-table td:last-child {
+            grid-column: 1 / -1;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 8px;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .payment-table td:last-child .btn-pay,
+        .payment-table td:last-child .btn-view {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.85rem;
+        }
+
+        /* Hide less important cols in card view */
+        .col-hide-mobile {
+            display: none;
+        }
     }
 CSS;
 
@@ -910,25 +1034,7 @@ require_once 'includes/header.php';
 
 <div class="page-header">
     <h2><i class="fas fa-money-check-alt"></i> Coach Payments</h2>
-    <div class="nav-menu" x-data="{ open: false }" @mouseenter="if(window.innerWidth >= 768) open = true" @mouseleave="if(window.innerWidth >= 768) open = false">
-        <button @click="if(window.innerWidth < 768) open = !open" class="nav-menu-btn">
-            <i class="fas fa-bars"></i>
-            <span>Menu</span>
-        </button>
-        <div x-show="open" @click.away="if(window.innerWidth < 768) open = false" @mouseenter="open = true" x-cloak class="nav-dropdown">
-            <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
-            <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
-            <?php if (canManage()): ?>
-                <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
-                <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
-                <a href="coach_payments.php" class="active"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
-                <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
-                <a href="users.php"><i class="fas fa-users"></i> Users</a>
-                <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
-            <?php endif; ?>
-            <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </div>
-    </div>
+    <?php include 'includes/nav-menu.php'; ?>
 </div>
 
 <?= $msg ?>
@@ -989,7 +1095,7 @@ require_once 'includes/header.php';
             <?php endforeach; ?>
         </select>
     </div>
-    <button type="submit" class="btn btn-primary" style="margin-top: -7px;">Apply</button>
+    <button type="submit" class="btn-apply">Apply</button>
 </form>
 
 <?php if ($tab !== 'history'): ?>
@@ -1005,11 +1111,11 @@ require_once 'includes/header.php';
         </div>
         <div>
             <h3>Total Paid</h3>
-            <div class="big-number" style="color: #28a745;">$<?= number_format($total_paid, 2) ?></div>
+            <div class="big-number" style="color: rgb(146, 254, 157);">$<?= number_format($total_paid, 2) ?></div>
         </div>
         <div>
             <h3>Remaining</h3>
-            <div class="big-number" style="color: <?= ($total_owed - $total_paid) > 0 ? '#ffc107' : '#28a745' ?>;">
+            <div class="big-number" style="color: <?= ($total_owed - $total_paid) > 0 ? '#ffc107' : 'rgb(146, 254, 157)' ?>;">
                 $<?= number_format($total_owed - $total_paid, 2) ?>
             </div>
         </div>
@@ -1054,17 +1160,17 @@ require_once 'includes/header.php';
                     $has_commission = !empty($data['info']['commission_tiers']);
                 ?>
                     <tr>
-                        <td class="font-bold">
+                        <td class="font-bold" data-label="Coach">
                             <button type="button" onclick="openCoachInfoModal(<?= $uid ?>, <?= htmlspecialchars(json_encode($data['info']), ENT_QUOTES) ?>)" class="btn-icon" style="margin-right: 6px;" title="View payment info">
-                                <i class="fas fa-info-circle" style="color: #007bff;"></i>
+                                <i class="fas fa-info-circle" style="color: rgb(0, 201, 255);"></i>
                             </button>
                             <?= e($data['info']['name']) ?>
                         </td>
-                        <td><?= $data['class_count'] ?></td>
-                        <td>$<?= number_format($data['regular_pay'], 2) ?></td>
-                        <td>$<?= number_format($data['private_pay'], 2) ?></td>
-                        <td><?= $data['fixed_salary'] > 0 ? '$' . number_format($data['fixed_salary'], 2) : '-' ?></td>
-                        <td>
+                        <td data-label="Classes"><?= $data['class_count'] ?></td>
+                        <td data-label="Regular">$<?= number_format($data['regular_pay'], 2) ?></td>
+                        <td data-label="Private">$<?= number_format($data['private_pay'], 2) ?></td>
+                        <td data-label="Salary" class="col-hide-mobile"><?= $data['fixed_salary'] > 0 ? '$' . number_format($data['fixed_salary'], 2) : '-' ?></td>
+                        <td data-label="Commission" class="col-hide-mobile">
                             <?php if ($has_commission): ?>
                                 $<?= number_format($data['commission_pay'], 2) ?>
                                 <button type="button" onclick="openConversionModal(<?= $uid ?>, '<?= e($data['info']['name']) ?>', <?= $data['conversions'] ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit conversions">
@@ -1074,7 +1180,7 @@ require_once 'includes/header.php';
                                 -
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Deduction" class="col-hide-mobile">
                             <?php if ($data['deduction'] > 0): ?>
                                 <span class="text-danger">-$<?= number_format($data['deduction'], 2) ?></span>
                             <?php else: ?>
@@ -1084,14 +1190,14 @@ require_once 'includes/header.php';
                                 <i class="fas fa-minus-circle"></i>
                             </button>
                         </td>
-                        <td class="font-bold text-success">$<?= number_format($data['total_pay'], 2) ?></td>
-                        <td class="font-bold" style="color: #28a745;">
+                        <td data-label="Total Owed" class="font-bold text-success">$<?= number_format($data['total_pay'], 2) ?></td>
+                        <td data-label="Total Paid" class="font-bold" style="color: #28a745;">
                             <?= $total_paid > 0 ? '$' . number_format($total_paid, 2) : '-' ?>
                         </td>
-                        <td class="font-bold" style="color: <?= $balance_due > 0.01 ? '#dc3545' : '#28a745' ?>;">
+                        <td data-label="Balance Due" class="font-bold" style="color: <?= $balance_due > 0.01 ? '#dc3545' : '#28a745' ?>;">
                             $<?= number_format($balance_due, 2) ?>
                         </td>
-                        <td>
+                        <td data-label="Status">
                             <?php if ($is_fully_paid): ?>
                                 <span class="status-badge status-paid">
                                     <i class="fas fa-check-circle"></i> Paid <?= date('M d', strtotime($payment['last_payment_date'])) ?>
@@ -1106,7 +1212,7 @@ require_once 'includes/header.php';
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="">
                             <?php if ($is_fully_paid): ?>
                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Remove payment record for this coach? This will delete ALL payments for this period.');">
                                     <input type="hidden" name="action" value="delete_all_payments">
@@ -1153,17 +1259,17 @@ require_once 'includes/header.php';
             <tbody>
                 <?php foreach ($payment_history as $p): ?>
                     <tr>
-                        <td class="font-bold"><?= e($p['coach_name']) ?></td>
-                        <td><?= date('M d, Y', strtotime($p['payment_date'])) ?></td>
-                        <td><?= date('M d', strtotime($p['period_start'])) ?> - <?= date('M d', strtotime($p['period_end'])) ?></td>
-                        <td class="font-bold text-success">$<?= number_format($p['amount'], 2) ?></td>
-                        <td>
+                        <td class="font-bold" data-label="Coach"><?= e($p['coach_name']) ?></td>
+                        <td data-label="Payment Date"><?= date('M d, Y', strtotime($p['payment_date'])) ?></td>
+                        <td data-label="Period"><?= date('M d', strtotime($p['period_start'])) ?> - <?= date('M d', strtotime($p['period_end'])) ?></td>
+                        <td data-label="Amount" class="font-bold text-success">$<?= number_format($p['amount'], 2) ?></td>
+                        <td data-label="Method">
                             <span class="status-badge <?= $p['payment_method'] === 'adp' ? 'status-paid' : 'status-unpaid' ?>">
                                 <?= strtoupper($p['payment_method']) ?>
                             </span>
                         </td>
-                        <td><?= e($p['notes'] ?: '-') ?></td>
-                        <td>
+                        <td data-label="Notes" class="col-hide-mobile"><?= e($p['notes'] ?: '-') ?></td>
+                        <td data-label="">
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this payment record?');">
                                 <input type="hidden" name="action" value="delete_payment">
                                 <input type="hidden" name="payment_id" value="<?= $p['id'] ?>">
