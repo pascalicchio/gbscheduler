@@ -593,19 +593,19 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
         }
 
-        /* Gradient buttons for primary actions */
-        .nav-btn.btn-primary {
-            background-image: var(--gradient-primary);
+        /* Dark gradient buttons for clone/download */
+        .nav-btn.btn-dark {
+            background-image: linear-gradient(135deg, #1a202c, #2d3748);
             color: white;
             font-weight: 700;
-            box-shadow: 0 4px 12px rgba(0, 201, 255, 0.25);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             border: none;
         }
 
-        .nav-btn.btn-primary:hover {
-            background-image: var(--gradient-hover);
+        .nav-btn.btn-dark:hover {
+            background-image: linear-gradient(135deg, #2d3748, #4a5568);
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 201, 255, 0.35);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
         }
 
         /* ADDED: Lock States */
@@ -1108,10 +1108,450 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 width: 100%;
             }
         }
+
+        /* ======================================== */
+        /* Mobile Layout (≤768px) */
+        /* ======================================== */
+        [x-cloak] { display: none !important; }
+
+        .mobile-header {
+            display: none;
+        }
+
+        .mobile-filters {
+            display: none;
+        }
+
+        .mobile-payroll {
+            display: none;
+        }
+
+        .mobile-calendar {
+            display: none;
+        }
+
+        .mobile-week-nav {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                display: block;
+                height: auto;
+                overflow: auto;
+            }
+
+            #sidebar {
+                display: none !important;
+            }
+
+            #calendar-container {
+                display: none !important;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 16px 20px;
+                background: white;
+                border-bottom: 1px solid rgba(0, 201, 255, 0.1);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+
+            .mobile-header::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 3px;
+                background-image: var(--gradient-primary);
+            }
+
+            .mobile-header h2 {
+                margin: 0;
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--secondary-dark);
+            }
+
+            /* Nav Menu - Standard Pattern */
+            .nav-menu {
+                position: relative;
+            }
+
+            .nav-menu-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 18px;
+                background-image: linear-gradient(135deg, #1a202c, #2d3748);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-weight: 700;
+                font-size: 0.9rem;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .nav-menu-btn:hover {
+                background-image: linear-gradient(135deg, #2d3748, #4a5568);
+                transform: translateY(-1px);
+            }
+
+            .nav-dropdown {
+                position: absolute;
+                right: 0;
+                top: 100%;
+                margin-top: 8px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+                border: 1px solid #e8ecf2;
+                min-width: 220px;
+                z-index: 1000;
+                overflow: hidden;
+            }
+
+            .nav-dropdown a {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 20px;
+                color: var(--text-color);
+                text-decoration: none;
+                font-weight: 500;
+                font-size: 0.95rem;
+                transition: all 0.2s ease;
+                border-left: 3px solid transparent;
+            }
+
+            .nav-dropdown a:hover {
+                background: linear-gradient(to right, rgba(0,201,255,0.08), transparent);
+                border-left-color: rgb(0, 201, 255);
+                padding-left: 24px;
+            }
+
+            .nav-dropdown a i {
+                width: 18px;
+                text-align: center;
+                color: #a0aec0;
+                font-size: 0.95rem;
+            }
+
+            .nav-dropdown a:hover i {
+                color: rgb(0, 201, 255);
+            }
+
+            .nav-dropdown a.logout {
+                border-top: 1px solid #f0f0f0;
+                color: #e53e3e;
+            }
+
+            .nav-dropdown a.logout:hover {
+                background: linear-gradient(to right, rgba(229, 62, 62, 0.06), transparent);
+                border-left-color: #e53e3e;
+            }
+
+            .nav-dropdown a.logout i {
+                color: #e53e3e;
+            }
+
+            /* Mobile Filters */
+            .mobile-filters {
+                display: block;
+                padding: 16px 20px;
+                background: white;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .mobile-filter-row {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+            }
+
+            .mobile-filter-row .filter-group {
+                flex: 1;
+            }
+
+            .mobile-filter-row label {
+                display: block;
+                font-size: 0.7rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: #a0aec0;
+                margin-bottom: 6px;
+            }
+
+            .mobile-filter-row select {
+                width: 100%;
+                padding: 10px 12px;
+                border: 2px solid #e2e8f0;
+                border-radius: 10px;
+                font-size: 0.9rem;
+                font-weight: 500;
+                background: white;
+                color: var(--text-color);
+                transition: all 0.2s;
+                font-family: inherit;
+            }
+
+            .mobile-filter-row select:focus {
+                outline: none;
+                border-color: rgb(0, 201, 255);
+                box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+            }
+
+            /* Mobile Payroll */
+            .mobile-payroll {
+                display: block;
+                margin: 12px 16px;
+            }
+
+            /* Mobile Week Navigation */
+            .mobile-week-nav {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 20px;
+                background: white;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .mobile-week-nav .week-label {
+                font-weight: 700;
+                font-size: 1rem;
+                color: var(--secondary-dark);
+            }
+
+            .mobile-week-nav .nav-btn {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }
+
+            /* Mobile Calendar */
+            .mobile-calendar {
+                display: block;
+                padding: 0 16px 24px;
+            }
+
+            .mobile-day-card {
+                background: white;
+                border-radius: 12px;
+                margin-bottom: 12px;
+                border: 1px solid #e8ecf2;
+                overflow: hidden;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            }
+
+            .mobile-day-card.today {
+                border-color: #ffc107;
+                box-shadow: 0 2px 12px rgba(255, 193, 7, 0.2);
+            }
+
+            .mobile-day-header {
+                padding: 12px 16px;
+                background: linear-gradient(135deg, #1a202c, #2d3748);
+                color: white;
+                font-weight: 700;
+                font-size: 0.95rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .mobile-day-header .day-date {
+                font-weight: 400;
+                opacity: 0.8;
+                font-size: 0.85rem;
+            }
+
+            .mobile-day-card.today .mobile-day-header {
+                background: linear-gradient(135deg, #d69e2e, #ecc94b);
+            }
+
+            .mobile-class-item {
+                padding: 12px 16px;
+                border-bottom: 1px solid #f5f5f5;
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .mobile-class-item:last-child {
+                border-bottom: none;
+            }
+
+            .mobile-class-time {
+                font-weight: 700;
+                font-size: 0.8rem;
+                color: rgb(0, 201, 255);
+                min-width: 70px;
+                padding-top: 2px;
+            }
+
+            .mobile-class-info {
+                flex: 1;
+            }
+
+            .mobile-class-name {
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--secondary-dark);
+                margin-bottom: 4px;
+            }
+
+            .mobile-coach-badge {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                margin-right: 4px;
+                margin-bottom: 4px;
+                border-left: 3px solid;
+            }
+
+            .mobile-coach-badge.head {
+                background: rgba(0, 201, 255, 0.08);
+                color: #0d47a1;
+                border-left-color: rgb(0, 201, 255);
+            }
+
+            .mobile-coach-badge.helper {
+                background: rgba(146, 254, 157, 0.1);
+                color: #2e7d32;
+                border-left-color: rgb(146, 254, 157);
+            }
+
+            .mobile-empty-day {
+                padding: 16px;
+                text-align: center;
+                color: #a0aec0;
+                font-size: 0.85rem;
+                font-style: italic;
+            }
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- Mobile Header + Menu (hidden on desktop) -->
+    <div class="mobile-header">
+        <h2><i class="fas fa-calendar-alt" style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-right: 8px;"></i> GB Schedule</h2>
+        <div class="nav-menu" x-data="{ open: false }">
+            <button @click="open = !open" class="nav-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div x-show="open" @click.away="open = false" x-cloak class="nav-dropdown">
+                <a href="dashboard.php"><i class="fas fa-calendar-alt"></i> Dashboard</a>
+                <a href="reports.php"><i class="fas fa-chart-line"></i> Individual Report</a>
+                <?php if (canManage()): ?>
+                    <a href="private_classes.php"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
+                    <a href="location_reports.php"><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
+                    <a href="coach_payments.php"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                    <a href="classes.php"><i class="fas fa-graduation-cap"></i> Class Templates</a>
+                    <a href="users.php"><i class="fas fa-users"></i> Users</a>
+                    <a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a>
+                <?php endif; ?>
+                <a href="logout.php" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Filters (hidden on desktop) -->
+    <div class="mobile-filters" x-data="dashboardFilters()">
+        <div class="mobile-filter-row">
+            <div class="filter-group">
+                <label>Location</label>
+                <select x-model="location" @change="applyFilters()">
+                    <?php foreach ($locations as $l): ?>
+                        <option value="<?= $l['id'] ?>"><?= $l['name'] ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Martial Art</label>
+                <select x-model="martialArt" @change="applyFilters()">
+                    <option value="bjj">BJJ</option>
+                    <option value="mt">Muay Thai</option>
+                    <option value="mma">MMA</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <?php if ($is_admin): ?>
+    <!-- Mobile Payroll Preview (hidden on desktop) -->
+    <div class="mobile-payroll">
+        <div class="payroll-box">
+            <div class="payroll-label">
+                <i class="fas fa-dollar-sign"></i> Payroll Preview
+            </div>
+            <div class="payroll-value">
+                <div class="payroll-amount">$<span class="payroll-total-mobile">0.00</span></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Mobile Week Nav (hidden on desktop) -->
+    <div class="mobile-week-nav">
+        <a href="<?= $base_url ?>?week_start=<?= $prev_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn"><i class="fas fa-chevron-left"></i></a>
+        <span class="week-label">
+            <?= date('M d', strtotime($start_of_week)) ?> - <?= date('M d', strtotime($end_of_week)) ?>
+        </span>
+        <a href="<?= $base_url ?>?week_start=<?= $next_week_start ?><?= $location_param ?><?= $martial_art_param ?>" class="nav-btn"><i class="fas fa-chevron-right"></i></a>
+    </div>
+
+    <!-- Mobile Calendar View (hidden on desktop) -->
+    <div class="mobile-calendar">
+        <?php
+        $today = date('Y-m-d');
+        foreach ($days_of_week as $idx => $day):
+            $day_date = date('Y-m-d', strtotime($start_of_week . " +{$idx} days"));
+            $is_today = ($day_date === $today);
+            $day_classes = [];
+            foreach ($schedule_data as $row) {
+                $cell = $row['data'][$day] ?? null;
+                if ($cell) {
+                    $cell['class_title'] = $row['class_title'];
+                    $day_classes[] = $cell;
+                }
+            }
+        ?>
+            <div class="mobile-day-card <?= $is_today ? 'today' : '' ?>">
+                <div class="mobile-day-header">
+                    <span><?= $day ?></span>
+                    <span class="day-date"><?= date('M d', strtotime($day_date)) ?></span>
+                </div>
+                <?php if (empty($day_classes)): ?>
+                    <div class="mobile-empty-day">No classes scheduled</div>
+                <?php else: ?>
+                    <?php foreach ($day_classes as $cell): ?>
+                        <div class="mobile-class-item">
+                            <div class="mobile-class-time"><?= date('g:i A', strtotime($cell['start_time'])) ?></div>
+                            <div class="mobile-class-info">
+                                <div class="mobile-class-name"><?= htmlspecialchars($cell['class_title'] ?? '') ?></div>
+                                <?php foreach ($cell['coaches'] as $c): ?>
+                                    <span class="mobile-coach-badge <?= $c['position'] ?>" style="border-left-color: <?= $c['color_code'] ?>">
+                                        <?= $c['coach_name'] ?> (<?= ucfirst($c['position']) ?>)
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+    </div>
 
     <!-- Alpine.js Modal Component -->
     <div x-data
@@ -1273,7 +1713,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                     <?php endif; ?>
 
                     <div class="clone-dropdown" style="position:relative; display:inline-block; margin-left:15px;">
-                        <button id="clone-dropdown-btn" class="nav-btn btn-primary">
+                        <button id="clone-dropdown-btn" class="nav-btn btn-dark">
                             <i class="fas fa-copy"></i> Clone Week <i class="fas fa-caret-down" style="margin-left:5px;"></i>
                         </button>
                         <div id="clone-dropdown-menu" class="clone-dropdown-menu">
@@ -1290,7 +1730,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 <?php endif; ?>
 
                 <?php if ($can_view_tools): ?>
-                    <button id="download-btn" class="nav-btn btn-primary" style="margin-left:10px;">
+                    <button id="download-btn" class="nav-btn btn-dark" style="margin-left:10px;">
                         <i class="fas fa-download"></i> Download
                     </button>
                 <?php endif; ?>
@@ -1418,6 +1858,7 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 });
 
                 $('#payroll-total').text(total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('.payroll-total-mobile').text(total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
                 // Calculate week-over-week comparison
                 if (lastWeekPayroll > 0) {
