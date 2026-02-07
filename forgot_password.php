@@ -70,91 +70,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $pageTitle = 'Forgot Password | GB Schedule';
 $extraCss = <<<CSS
 
+        /* ======================================== */
+        /* CSS Variables - Mobile First */
+        /* ======================================== */
         :root {
-            --primary: #007bff;
-            --primary-hover: #0056b3;
+            --gradient-primary: linear-gradient(90deg, rgb(0, 201, 255), rgb(146, 254, 157));
+            --gradient-hover: linear-gradient(90deg, rgb(0, 181, 235), rgb(126, 234, 137));
             --text-dark: #2c3e50;
             --text-light: #6c757d;
-            --bg-color: #f0f4f8;
+            --bg-color: #f8fafb;
             --input-bg: #ffffff;
-            --border-color: #e1e4e8;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 12px 30px rgba(0, 201, 255, 0.12);
+        }
+
+        /* ======================================== */
+        /* Base Layout - Mobile First */
+        /* ======================================== */
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: var(--bg-color);
+            padding: 16px;
+            background: var(--bg-color);
             color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
         }
 
+        /* Top gradient decoration */
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary) 0%, #00d2ff 100%);
+            height: 4px;
+            background-image: var(--gradient-primary);
+            z-index: 1000;
         }
 
+        /* ======================================== */
+        /* Reset Card - Mobile First */
+        /* ======================================== */
         .reset-card {
             background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.02);
+            padding: 32px 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
             width: 100%;
-            max-width: 380px;
+            max-width: 420px;
             text-align: center;
-            border: 1px solid white;
+            border: 1px solid rgba(0, 201, 255, 0.1);
         }
 
+        @media (min-width: 480px) {
+            .reset-card {
+                padding: 40px 32px;
+            }
+        }
+
+        /* ======================================== */
+        /* Logo Area */
+        /* ======================================== */
         .logo-area {
-            margin-bottom: 20px;
+            margin-bottom: 32px;
         }
 
         .logo-circle {
-            width: 60px;
-            height: 60px;
-            background: rgba(0, 123, 255, 0.1);
+            width: 72px;
+            height: 72px;
+            background-image: var(--gradient-primary);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px auto;
-            color: var(--primary);
-            font-size: 1.5rem;
+            margin: 0 auto 20px auto;
+            color: white;
+            font-size: 1.75rem;
+            box-shadow: var(--shadow-lg);
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: var(--shadow-lg);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 12px 35px rgba(0, 201, 255, 0.2);
+                transform: scale(1.02);
+            }
         }
 
         h2 {
             margin: 0;
             color: var(--text-dark);
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        @media (min-width: 480px) {
+            h2 {
+                font-size: 2rem;
+            }
         }
 
         p.subtitle {
             color: var(--text-light);
-            margin: 5px 0 30px 0;
-            font-size: 0.9rem;
+            margin: 8px 0 32px 0;
+            font-size: 0.95rem;
+            font-weight: 400;
         }
 
+        /* ======================================== */
+        /* Form Elements - Touch Friendly */
+        /* ======================================== */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             text-align: left;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
             color: var(--text-dark);
-            font-size: 0.85em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 0.875rem;
+            letter-spacing: 0.3px;
         }
 
         .input-wrapper {
@@ -163,107 +215,162 @@ $extraCss = <<<CSS
 
         .input-wrapper i {
             position: absolute;
-            left: 15px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
-            color: #ccc;
-            transition: color 0.3s;
+            color: #cbd5e0;
+            transition: all 0.3s ease;
             z-index: 1;
+            font-size: 1.1rem;
         }
 
+        /* Touch-friendly inputs */
         .reset-card input[type="email"] {
             width: 100%;
-            padding: 12px 15px 12px 42px !important;
+            padding: 16px 16px 16px 48px !important;
             margin-bottom: 0 !important;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
             box-sizing: border-box;
-            font-size: 0.95rem;
+            font-size: 1rem;
             background: var(--input-bg);
-            transition: all 0.2s ease;
-            color: #333;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+            -webkit-appearance: none;
         }
 
         .reset-card input:focus {
-            border-color: var(--primary);
+            border-color: rgb(0, 201, 255);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+            box-shadow: 0 0 0 4px rgba(0, 201, 255, 0.1);
+            background: #fafbfc;
         }
 
         .input-wrapper:focus-within i {
-            color: var(--primary);
+            color: rgb(0, 201, 255);
+            transform: translateY(-50%) scale(1.1);
         }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            margin-top: 10px;
-            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.15);
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        button:active {
-            transform: translateY(1px);
-        }
-
+        /* ======================================== */
+        /* Messages */
+        /* ======================================== */
         .error-msg {
-            background-color: #fff5f5;
-            color: #e02424;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #fed7d7;
-            font-size: 0.85rem;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            color: #c53030;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 2px solid rgba(229, 62, 62, 0.2);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            font-weight: 500;
         }
 
         .success-msg {
-            background-color: #f0fff4;
+            background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
             color: #22543d;
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #9ae6b4;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 2px solid rgba(146, 254, 157, 0.3);
             font-size: 0.9rem;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             text-align: center;
+            font-weight: 500;
         }
 
         .success-msg i {
             font-size: 2rem;
             display: block;
             margin-bottom: 10px;
+            color: rgb(0, 201, 255);
         }
 
+        /* ======================================== */
+        /* Button - Gradient Primary */
+        /* ======================================== */
+        button[type="submit"],
+        .reset-card button {
+            width: 100%;
+            padding: 16px 24px;
+            background-image: var(--gradient-primary) !important;
+            background-color: transparent !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 12px;
+            box-shadow: 0 6px 20px rgba(0, 201, 255, 0.25);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (min-width: 480px) {
+            button[type="submit"],
+            .reset-card button {
+                padding: 18px 24px;
+                font-size: 1.1rem;
+            }
+        }
+
+        button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        button[type="submit"]:hover,
+        .reset-card button:hover {
+            background-image: var(--gradient-hover) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 201, 255, 0.35);
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button[type="submit"]:active,
+        .reset-card button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 15px rgba(0, 201, 255, 0.3);
+        }
+
+        /* ======================================== */
+        /* Back Link & Footer */
+        /* ======================================== */
         .back-link {
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 24px;
             color: var(--text-light);
             font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            padding: 4px 0;
         }
 
         .back-link:hover {
-            color: var(--primary);
+            color: rgb(0, 201, 255);
+            text-decoration: underline;
         }
 
         .footer-text {
-            margin-top: 30px;
+            margin-top: 32px;
             font-size: 0.8rem;
-            color: #999;
+            color: #a0aec0;
+            font-weight: 400;
         }
 CSS;
 
