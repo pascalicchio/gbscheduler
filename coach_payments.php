@@ -65,8 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notes = $_POST['notes'] ?? '';
         $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
 
-        $stmt = $pdo->prepare("INSERT INTO coach_payments (user_id, period_start, period_end, amount, payment_date, payment_method, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $period_start, $period_end, $amount, $payment_date, $payment_method, $notes, getUserId()]);
+        $pay_location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
+        $stmt = $pdo->prepare("INSERT INTO coach_payments (user_id, location_id, period_start, period_end, amount, payment_date, payment_method, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $pay_location_id, $period_start, $period_end, $amount, $payment_date, $payment_method, $notes, getUserId()]);
 
         setFlash("Payment recorded successfully!", 'success');
         header("Location: " . $_SERVER['REQUEST_URI']);
@@ -81,8 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_id = $_POST['user_id'];
         $period_start = $_POST['period_start'];
         $period_end = $_POST['period_end'];
-        $stmt = $pdo->prepare("DELETE FROM coach_payments WHERE user_id = ? AND period_start = ? AND period_end = ?");
-        $stmt->execute([$user_id, $period_start, $period_end]);
+        $del_location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
+        if ($del_location_id) {
+            $stmt = $pdo->prepare("DELETE FROM coach_payments WHERE user_id = ? AND period_start = ? AND period_end = ? AND location_id = ?");
+            $stmt->execute([$user_id, $period_start, $period_end, $del_location_id]);
+        } else {
+            $stmt = $pdo->prepare("DELETE FROM coach_payments WHERE user_id = ? AND period_start = ? AND period_end = ?");
+            $stmt->execute([$user_id, $period_start, $period_end]);
+        }
         setFlash("All payments deleted for this period.", 'error');
         header("Location: " . $_SERVER['REQUEST_URI']);
         exit();
@@ -360,7 +367,8 @@ if ($tab !== 'history') {
 
     // Check which coaches have been paid for the FILTERED period (use actual filter dates)
     // Now we get SUM of all payments for this period to support multiple/partial payments
-    $paid_check = $pdo->prepare("
+    // When a location filter is active, only count payments for that location
+    $paid_sql = "
         SELECT user_id, 
                SUM(amount) as total_paid,
                MAX(payment_date) as last_payment_date,
@@ -368,9 +376,15 @@ if ($tab !== 'history') {
                MAX(payment_method) as payment_method
         FROM coach_payments
         WHERE period_start = ? AND period_end = ?
-        GROUP BY user_id
-    ");
-    $paid_check->execute([$start_date, $end_date]);
+    ";
+    $paid_params = [$start_date, $end_date];
+    if ($filter_location_id) {
+        $paid_sql .= " AND location_id = ?";
+        $paid_params[] = $filter_location_id;
+    }
+    $paid_sql .= " GROUP BY user_id";
+    $paid_check = $pdo->prepare($paid_sql);
+    $paid_check->execute($paid_params);
     $paid_records = [];
     foreach ($paid_check->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $paid_records[$p['user_id']] = $p;
@@ -1217,6 +1231,7 @@ require_once 'includes/header.php';
                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Remove payment record for this coach? This will delete ALL payments for this period.');">
                                     <input type="hidden" name="action" value="delete_all_payments">
                                     <input type="hidden" name="user_id" value="<?= $uid ?>">
+                                    <input type="hidden" name="location_id" value="<?= htmlspecialchars($filter_location_id) ?>">
                                     <input type="hidden" name="period_start" value="<?= $start_date ?>">
                                     <input type="hidden" name="period_end" value="<?= $end_date ?>">
                                     <button type="submit" class="btn-view" title="Remove all payments">
@@ -1295,6 +1310,7 @@ require_once 'includes/header.php';
         <form method="POST">
             <input type="hidden" name="action" value="mark_paid">
             <input type="hidden" name="user_id" id="modal_user_id">
+            <input type="hidden" name="location_id" value="<?= htmlspecialchars($filter_location_id) ?>">
             <input type="hidden" name="period_start" value="<?= $start_date ?>">
             <input type="hidden" name="period_end" value="<?= $end_date ?>">
 
