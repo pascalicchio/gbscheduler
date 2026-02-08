@@ -119,17 +119,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $period_month = $_POST['period_month'];
         $amount = $_POST['amount'] ?? 0;
         $reason = $_POST['reason'] ?? '';
+        $ded_location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
 
-        // Upsert deduction
-        $check = $pdo->prepare("SELECT id FROM user_deductions WHERE user_id = ? AND period_month = ?");
-        $check->execute([$user_id, $period_month]);
+        // Upsert deduction (scoped by location)
+        $check = $pdo->prepare("SELECT id FROM user_deductions WHERE user_id = ? AND period_month = ? AND location_id " . ($ded_location_id ? "= ?" : "IS NULL"));
+        $check_params = [$user_id, $period_month];
+        if ($ded_location_id) $check_params[] = $ded_location_id;
+        $check->execute($check_params);
 
         if ($check->fetch()) {
-            $stmt = $pdo->prepare("UPDATE user_deductions SET amount = ?, reason = ?, created_by = ? WHERE user_id = ? AND period_month = ?");
-            $stmt->execute([$amount, $reason, getUserId(), $user_id, $period_month]);
+            $upd_sql = "UPDATE user_deductions SET amount = ?, reason = ?, created_by = ? WHERE user_id = ? AND period_month = ? AND location_id " . ($ded_location_id ? "= ?" : "IS NULL");
+            $upd_params = [$amount, $reason, getUserId(), $user_id, $period_month];
+            if ($ded_location_id) $upd_params[] = $ded_location_id;
+            $stmt = $pdo->prepare($upd_sql);
+            $stmt->execute($upd_params);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO user_deductions (user_id, period_month, amount, reason, created_by) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$user_id, $period_month, $amount, $reason, getUserId()]);
+            $stmt = $pdo->prepare("INSERT INTO user_deductions (user_id, location_id, period_month, amount, reason, created_by) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $ded_location_id, $period_month, $amount, $reason, getUserId()]);
         }
 
         setFlash("Deduction updated successfully!", 'success');
@@ -349,10 +355,15 @@ if ($tab !== 'history') {
         $coach_data[$uid]['total_pay'] += $commission;
     }
 
-    // Apply deductions
+    // Apply deductions (scoped by location filter)
     $ded_sql = "SELECT user_id, amount, reason FROM user_deductions WHERE period_month = ?";
+    $ded_params = [$period_month];
+    if ($filter_location_id) {
+        $ded_sql .= " AND location_id = ?";
+        $ded_params[] = $filter_location_id;
+    }
     $stmt = $pdo->prepare($ded_sql);
-    $stmt->execute([$period_month]);
+    $stmt->execute($ded_params);
     $ded_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($ded_rows as $row) {
@@ -1400,6 +1411,7 @@ require_once 'includes/header.php';
         <form method="POST">
             <input type="hidden" name="action" value="update_deduction">
             <input type="hidden" name="user_id" id="ded_user_id">
+            <input type="hidden" name="location_id" value="<?= htmlspecialchars($filter_location_id) ?>">
             <input type="hidden" name="period_month" id="ded_period_month">
 
             <div class="modal-body">
