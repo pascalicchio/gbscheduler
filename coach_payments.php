@@ -367,7 +367,8 @@ if ($tab !== 'history') {
 
     // Check which coaches have been paid for the FILTERED period (use actual filter dates)
     // Now we get SUM of all payments for this period to support multiple/partial payments
-    // When a location filter is active, only count payments for that location
+    // When a location filter is active, only count payments recorded for that specific location
+    // When "All Locations" is selected, count all payments (legacy NULL + per-location)
     $paid_sql = "
         SELECT user_id, 
                SUM(amount) as total_paid,
