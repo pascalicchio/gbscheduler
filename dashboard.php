@@ -1600,11 +1600,13 @@ $schedule_data = get_schedule_data($pdo, $filter_location_id, $start_of_week, $e
                 <a href="users.php" class="sidebar-link"><i class="fas fa-users"></i> Manage Users</a>
                 <a href="private_classes.php" class="sidebar-link"><i class="fas fa-money-bill-wave"></i> Private Classes</a>
                 <a href="inventory.php" class="sidebar-link"><i class="fas fa-boxes"></i> Inventory</a>
+                <a href="upload_zenplanner.php" class="sidebar-link"><i class="fas fa-upload"></i> Upload Data</a>
 
                 <?php if ($is_admin): ?>
                     <a href="classes.php" class="sidebar-link"><i class="fas fa-calendar-alt"></i> Manage Classes</a>
                     <a href="location_reports.php" class="sidebar-link"><i class="fas fa-file-invoice-dollar"></i> Payroll Report</a>
                     <a href="coach_payments.php" class="sidebar-link"><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+                    <a href="school_dashboard.php" class="sidebar-link"><i class="fas fa-chart-line"></i> School Dashboard</a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
