@@ -27,10 +27,10 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
     $stmt->execute([$location]);
     $stats['active_members'] = $stmt->fetchColumn();
 
-    // Members on hold (current holds)
+    // Members on hold (current holds - active holds based on date range)
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM gb_holds
-        WHERE location = ? AND status = 'CURRENT'
+        WHERE location = ?
         AND CURDATE() BETWEEN begin_date AND end_date
     ");
     $stmt->execute([$location]);

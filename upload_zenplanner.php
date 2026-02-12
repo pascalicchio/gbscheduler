@@ -49,8 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             $rowCount = 0;
             $importCount = 0;
 
-            // Skip header row
-            $headers = fgetcsv($handle);
+            // Skip empty first line (if exists) and header row
+            $firstLine = fgetcsv($handle);
+            // If first line is empty or has only one empty element, read the actual header
+            if (empty($firstLine) || (count($firstLine) === 1 && trim($firstLine[0]) === '')) {
+                $headers = fgetcsv($handle); // Read actual headers
+            } else {
+                $headers = $firstLine; // First line was the header
+            }
 
             try {
                 $pdo->beginTransaction();
@@ -88,15 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                             $importCount++;
                         }
                     } elseif ($dataType === 'holds') {
-                        // ZenPlanner Holds columns: First Name, Last Name, Phone Number, Begin Date,
-                        // End Date, Reason, Reason (sub), Status
-                        if (count($row) >= 8) {
+                        // ZenPlanner Holds columns: First Name, Last Name, Begin Date, End Date, Reason
+                        if (count($row) >= 5) {
                             // Combine first and last name
                             $memberName = trim($row[0] . ' ' . $row[1]);
 
                             // Parse dates
-                            $beginDate = date('Y-m-d', strtotime($row[3]));
-                            $endDate = date('Y-m-d', strtotime($row[4]));
+                            $beginDate = date('Y-m-d', strtotime($row[2]));
+                            $endDate = date('Y-m-d', strtotime($row[3]));
 
                             // Check for duplicate using unique constraint
                             $checkStmt = $pdo->prepare("
@@ -112,17 +117,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
 
                             $stmt = $pdo->prepare("
                                 INSERT INTO gb_holds
-                                (member_name, phone_number, begin_date, end_date, reason, reason_sub, status, location)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                (member_name, begin_date, end_date, reason, location)
+                                VALUES (?, ?, ?, ?, ?)
                             ");
                             $stmt->execute([
                                 $memberName,
-                                $row[2], // Phone Number
                                 $beginDate,
                                 $endDate,
-                                $row[5], // Reason
-                                $row[6], // Reason (sub)
-                                $row[7], // Status
+                                $row[4], // Reason
                                 $location
                             ]);
                             $importCount++;
