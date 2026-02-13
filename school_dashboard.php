@@ -785,10 +785,12 @@ body {
 }
 
 .chart-label {
-    min-width: 80px;
+    width: 180px;
+    min-width: 180px;
     font-size: 12px;
     font-weight: 600;
     color: #666;
+    flex-shrink: 0;
 }
 
 .chart-bar-container {

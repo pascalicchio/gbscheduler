@@ -1,0 +1,6 @@
+2026-02-13 05:53:44 - 127.0.0.1 - OpenClaw Agent - /api/v1/academies
+2026-02-13 05:53:52 - 127.0.0.1 - OpenClaw Agent - /api/v1/revenue?location=celebration
+2026-02-13 05:53:56 - 127.0.0.1 - OpenClaw Agent - /api/v1/trends?location=celebration&period=30days
+2026-02-13 06:00:52 - 127.0.0.1 - OpenClaw Agent - /api/v1/academies
+2026-02-13 06:17:10 - 127.0.0.1 - OpenClaw Agent - /api/v1/academies
+2026-02-13 06:21:47 - 127.0.0.1 - OpenClaw Agent - /api/v1/academies
