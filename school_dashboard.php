@@ -52,14 +52,24 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
     $stats['revenue_period'] = $stmt->fetchColumn();
 
     // Previous period revenue for comparison
-    $prevStartDate = date('Y-m-d', strtotime($startDate . " -{$daysInRange} days"));
+    $daysInRangeInt = (int)$daysInRange; // Ensure integer
+    $prevStartDate = date('Y-m-d', strtotime($startDate . " -{$daysInRangeInt} days"));
     $prevEndDate = date('Y-m-d', strtotime($startDate . " -1 day"));
-    $stmt = $pdo->prepare("
-        SELECT COALESCE(SUM(amount), 0) FROM gb_revenue
-        WHERE location = ? AND payment_date >= ? AND payment_date <= ?
-    ");
-    $stmt->execute([$location, $prevStartDate, $prevEndDate]);
-    $prevRevenue = $stmt->fetchColumn();
+
+    // Debug: Log if dates look wrong
+    if ($prevStartDate < '1900-01-01' || $prevStartDate > '2100-01-01' ||
+        $prevEndDate < '1900-01-01' || $prevEndDate > '2100-01-01') {
+        error_log("Invalid date calculation: prevStart=$prevStartDate, prevEnd=$prevEndDate, startDate=$startDate, daysInRange=$daysInRange");
+        // Skip previous period comparison if dates are invalid
+        $prevRevenue = 0;
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(amount), 0) FROM gb_revenue
+            WHERE location = ? AND payment_date >= ? AND payment_date <= ?
+        ");
+        $stmt->execute([$location, $prevStartDate, $prevEndDate]);
+        $prevRevenue = $stmt->fetchColumn();
+    }
 
     if ($prevRevenue > 0) {
         $stats['revenue_change'] = (($stats['revenue_period'] - $prevRevenue) / $prevRevenue) * 100;
@@ -80,7 +90,11 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
                 m.member_id,
                 COALESCE(SUM(r.amount), 0) as total_revenue,
                 DATEDIFF(
-                    COALESCE(MAX(c.cancellation_date), CURDATE()),
+                    CASE
+                        WHEN MAX(c.cancellation_date) > m.join_date
+                        THEN MAX(c.cancellation_date)
+                        ELSE CURDATE()
+                    END,
                     m.join_date
                 ) as tenure_days
             FROM gb_members m
@@ -108,13 +122,21 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
     $stmt->execute([$location, $startDate, $endDate]);
     $stats['new_members_period'] = $stmt->fetchColumn();
 
-    // Cancellations in period
+    // Cancellations in period (total membership plans)
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM gb_cancellations
         WHERE location = ? AND cancellation_date >= ? AND cancellation_date <= ?
     ");
     $stmt->execute([$location, $startDate, $endDate]);
     $stats['cancellations_period'] = $stmt->fetchColumn();
+
+    // Unique members who cancelled (distinct people)
+    $stmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT member_name) FROM gb_cancellations
+        WHERE location = ? AND cancellation_date >= ? AND cancellation_date <= ?
+    ");
+    $stmt->execute([$location, $startDate, $endDate]);
+    $stats['unique_members_cancelled'] = $stmt->fetchColumn();
 
     // Net member growth
     $stats['net_growth'] = $stats['new_members_period'] - $stats['cancellations_period'];
@@ -638,8 +660,19 @@ body {
     margin-bottom: 30px;
 }
 
+.metrics-grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
 @media (max-width: 1200px) {
     .metrics-grid-4col {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .metrics-grid-3col {
         grid-template-columns: repeat(2, 1fr);
     }
 }
@@ -1186,6 +1219,56 @@ require_once 'includes/header.php';
                             <div class="metric-subtext">months average</div>
                         </div>
                     </div>
+
+                    <div class="metrics-grid-3col">
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Total Active Members
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Total Active Members</strong>
+                                    All members with active status, including those on hold. This is your total enrolled member count.
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($davenportStats['active_members']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($davenportStats['true_active']) ?> training (<?= $davenportStats['on_hold'] ?> on hold)
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Members on Hold
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Members on Hold</strong>
+                                    Members with active holds (current date falls between hold start and end dates). These don't count toward your training member count.
+                                    <br><strong>Watch if:</strong> >10% of total members
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($davenportStats['on_hold']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($davenportStats['hold_rate'], 1) ?>% of total members
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Cancellations
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Cancellations</strong>
+                                    Total membership plans cancelled vs unique members who left. If one member cancels multiple plans, both numbers help understand the impact.
+                                    <br><strong>Plans:</strong> Revenue impact
+                                    <br><strong>Members:</strong> People churn
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($davenportStats['cancellations_period']) ?></div>
+                            <div class="metric-subtext">
+                                <?= $davenportStats['cancellations_period'] ?> plans / <?= $davenportStats['unique_members_cancelled'] ?> members
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Hold Analysis -->
@@ -1477,6 +1560,56 @@ require_once 'includes/header.php';
                             </div>
                             <div class="metric-value"><?= number_format($celebrationStats['avg_tenure_months'], 1) ?></div>
                             <div class="metric-subtext">months average</div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid-3col">
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Total Active Members
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Total Active Members</strong>
+                                    All members with active status, including those on hold. This is your total enrolled member count.
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($celebrationStats['active_members']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($celebrationStats['true_active']) ?> training (<?= $celebrationStats['on_hold'] ?> on hold)
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Members on Hold
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Members on Hold</strong>
+                                    Members with active holds (current date falls between hold start and end dates). These don't count toward your training member count.
+                                    <br><strong>Watch if:</strong> >10% of total members
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($celebrationStats['on_hold']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($celebrationStats['hold_rate'], 1) ?>% of total members
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Cancellations
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Cancellations</strong>
+                                    Total membership plans cancelled vs unique members who left. If one member cancels multiple plans, both numbers help understand the impact.
+                                    <br><strong>Plans:</strong> Revenue impact
+                                    <br><strong>Members:</strong> People churn
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($celebrationStats['cancellations_period']) ?></div>
+                            <div class="metric-subtext">
+                                <?= $celebrationStats['cancellations_period'] ?> plans / <?= $celebrationStats['unique_members_cancelled'] ?> members
+                            </div>
                         </div>
                     </div>
                 </div>
