@@ -185,6 +185,17 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
         ? ($holdsToCancel / $stats['on_hold']) * 100
         : 0;
 
+    // Hold reasons
+    $stmt = $pdo->prepare("
+        SELECT reason, COUNT(*) as count
+        FROM gb_holds
+        WHERE location = ?
+        GROUP BY reason
+        ORDER BY count DESC
+    ");
+    $stmt->execute([$location]);
+    $stats['hold_reasons'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     // ========================================
     // CANCELLATION ANALYSIS
     // ========================================
@@ -301,8 +312,22 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
 $davenportStats = getLocationStats($pdo, 'davenport', $startDate, $endDate);
 $celebrationStats = getLocationStats($pdo, 'celebration', $startDate, $endDate);
 
+// Get latest data date (most recent date across all data sources)
+$latestDataDate = $pdo->query("
+    SELECT MAX(latest_date) as max_date FROM (
+        SELECT MAX(payment_date) as latest_date FROM gb_revenue
+        UNION ALL
+        SELECT MAX(cancellation_date) FROM gb_cancellations
+        UNION ALL
+        SELECT MAX(join_date) FROM gb_members
+        UNION ALL
+        SELECT MAX(end_date) FROM gb_holds
+    ) AS dates
+")->fetchColumn();
+
 // Combined stats for executive summary
 $combined = [
+    'total_members' => ($davenportStats['active_members'] + $celebrationStats['active_members']) + ($davenportStats['on_hold'] + $celebrationStats['on_hold']),
     'total_active' => $davenportStats['active_members'] + $celebrationStats['active_members'],
     'total_on_hold' => $davenportStats['on_hold'] + $celebrationStats['on_hold'],
     'total_revenue' => $davenportStats['revenue_period'] + $celebrationStats['revenue_period'],
@@ -359,7 +384,8 @@ body {
     box-shadow: var(--shadow-md);
     border: 1px solid #e8ecf2;
     padding: 20px 30px;
-    margin: 0 20px 30px 20px;
+    margin: 0 auto 30px auto;
+    max-width: 1600px;
 }
 
 .date-picker-form {
@@ -467,6 +493,20 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+}
+
+.data-freshness-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(0, 201, 255, 0.3);
 }
 
 .summary-grid {
@@ -954,7 +994,12 @@ require_once 'includes/header.php';
 
     <!-- EXECUTIVE SUMMARY -->
     <div class="executive-summary">
-        <h3><i class="fas fa-tachometer-alt"></i> Executive Summary (Both Locations)</h3>
+        <h3>
+            <i class="fas fa-tachometer-alt"></i> Executive Summary (Both Locations)
+            <span class="data-freshness-badge">
+                <i class="fas fa-calendar-check"></i> Data through <?= date('M j, Y', strtotime($latestDataDate)) ?>
+            </span>
+        </h3>
         <div class="summary-grid">
 
             <div class="summary-card">
@@ -1220,7 +1265,22 @@ require_once 'includes/header.php';
                         </div>
                     </div>
 
-                    <div class="metrics-grid-3col">
+                    <div class="metrics-grid-4col">
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Total Members
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Total Members</strong>
+                                    Total enrolled members including both active and those on hold.
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($davenportStats['active_members'] + $davenportStats['on_hold']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($davenportStats['active_members']) ?> active + <?= $davenportStats['on_hold'] ?> on hold
+                            </div>
+                        </div>
+
                         <div class="metric-card">
                             <div class="metric-label" x-data="{ show: false }">
                                 Total Active Members
@@ -1429,6 +1489,37 @@ require_once 'includes/header.php';
                 </div>
                 <?php endif; ?>
 
+                <!-- Hold Reasons -->
+                <?php if (!empty($davenportStats['hold_reasons'])): ?>
+                <div class="subsection">
+                    <div class="section-header">
+                        <h4><i class="fas fa-pause-circle"></i> Why Members Go On Hold</h4>
+                        <div style="position: relative; display: inline-block;" x-data="{ show: false }">
+                            <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                            <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                <strong>Hold Reasons</strong>
+                                Understanding why members pause helps you address concerns and bring them back faster!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="simple-chart">
+<?php
+$maxCount = max(array_column($davenportStats['hold_reasons'], 'count'));
+foreach ($davenportStats['hold_reasons'] as $holdReason) {
+    $percentage = $maxCount > 0 ? ($holdReason['count'] / $maxCount) * 100 : 0;
+    echo '                        <div class="chart-bar">' . "\n";
+    echo '                            <div class="chart-label">' . htmlspecialchars($holdReason['reason']) . '</div>' . "\n";
+    echo '                            <div class="chart-bar-container">' . "\n";
+    echo '                                <div class="chart-bar-fill" style="width: ' . $percentage . '%"></div>' . "\n";
+    echo '                            </div>' . "\n";
+    echo '                            <div class="chart-value">' . $holdReason['count'] . '</div>' . "\n";
+    echo '                        </div>' . "\n";
+}
+?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
             </div>
         </div>
 
@@ -1563,7 +1654,22 @@ require_once 'includes/header.php';
                         </div>
                     </div>
 
-                    <div class="metrics-grid-3col">
+                    <div class="metrics-grid-4col">
+                        <div class="metric-card">
+                            <div class="metric-label" x-data="{ show: false }">
+                                Total Members
+                                <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                                <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                    <strong>Total Members</strong>
+                                    Total enrolled members including both active and those on hold.
+                                </div>
+                            </div>
+                            <div class="metric-value"><?= number_format($celebrationStats['active_members'] + $celebrationStats['on_hold']) ?></div>
+                            <div class="metric-subtext">
+                                <?= number_format($celebrationStats['active_members']) ?> active + <?= $celebrationStats['on_hold'] ?> on hold
+                            </div>
+                        </div>
+
                         <div class="metric-card">
                             <div class="metric-label" x-data="{ show: false }">
                                 Total Active Members
@@ -1769,6 +1875,37 @@ require_once 'includes/header.php';
                             </li>
                         <?php endforeach; ?>
                     </ul>
+                </div>
+                <?php endif; ?>
+
+                <!-- Hold Reasons -->
+                <?php if (!empty($celebrationStats['hold_reasons'])): ?>
+                <div class="subsection">
+                    <div class="section-header">
+                        <h4><i class="fas fa-pause-circle"></i> Why Members Go On Hold</h4>
+                        <div style="position: relative; display: inline-block;" x-data="{ show: false }">
+                            <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
+                            <div x-show="show" x-transition class="info-tooltip" x-cloak>
+                                <strong>Hold Reasons</strong>
+                                Understanding why members pause helps you address concerns and bring them back faster!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="simple-chart">
+<?php
+$maxCount = max(array_column($celebrationStats['hold_reasons'], 'count'));
+foreach ($celebrationStats['hold_reasons'] as $holdReason) {
+    $percentage = $maxCount > 0 ? ($holdReason['count'] / $maxCount) * 100 : 0;
+    echo '                        <div class="chart-bar">' . "\n";
+    echo '                            <div class="chart-label">' . htmlspecialchars($holdReason['reason']) . '</div>' . "\n";
+    echo '                            <div class="chart-bar-container">' . "\n";
+    echo '                                <div class="chart-bar-fill" style="width: ' . $percentage . '%"></div>' . "\n";
+    echo '                            </div>' . "\n";
+    echo '                            <div class="chart-value">' . $holdReason['count'] . '</div>' . "\n";
+    echo '                        </div>' . "\n";
+}
+?>
+                    </div>
                 </div>
                 <?php endif; ?>
 
