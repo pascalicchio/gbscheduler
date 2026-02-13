@@ -312,17 +312,9 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
 $davenportStats = getLocationStats($pdo, 'davenport', $startDate, $endDate);
 $celebrationStats = getLocationStats($pdo, 'celebration', $startDate, $endDate);
 
-// Get latest data date (most recent date across all data sources)
+// Get latest revenue data date (most recent payment date)
 $latestDataDate = $pdo->query("
-    SELECT MAX(latest_date) as max_date FROM (
-        SELECT MAX(payment_date) as latest_date FROM gb_revenue
-        UNION ALL
-        SELECT MAX(cancellation_date) FROM gb_cancellations
-        UNION ALL
-        SELECT MAX(join_date) FROM gb_members
-        UNION ALL
-        SELECT MAX(end_date) FROM gb_holds
-    ) AS dates
+    SELECT MAX(payment_date) FROM gb_revenue
 ")->fetchColumn();
 
 // Combined stats for executive summary
