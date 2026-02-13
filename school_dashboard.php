@@ -1132,43 +1132,87 @@ require_once 'includes/header.php';
 
     <!-- PROFIT & LOSS OVERVIEW -->
     <?php
-    // FAKE DATA - Replace with real QuickBooks data later
-    $fakeExpenses = [
-        'davenport' => [
-            'total_expenses' => 12500,
-            'categories' => [
-                ['name' => 'Rent & Utilities', 'amount' => 4500],
-                ['name' => 'Coaching Salaries', 'amount' => 5200],
-                ['name' => 'Equipment & Supplies', 'amount' => 1800],
-                ['name' => 'Marketing', 'amount' => 600],
-                ['name' => 'Insurance', 'amount' => 400],
-            ]
-        ],
-        'celebration' => [
-            'total_expenses' => 18750,
-            'categories' => [
-                ['name' => 'Rent & Utilities', 'amount' => 6800],
-                ['name' => 'Coaching Salaries', 'amount' => 8200],
-                ['name' => 'Equipment & Supplies', 'amount' => 2100],
-                ['name' => 'Marketing', 'amount' => 900],
-                ['name' => 'Insurance', 'amount' => 750],
-            ]
-        ]
-    ];
+    // Try to get real expense data from database
+    $expenseData = [];
+    $hasRealData = false;
 
-    $davenportProfit = $davenportStats['revenue_period'] - $fakeExpenses['davenport']['total_expenses'];
-    $celebrationProfit = $celebrationStats['revenue_period'] - $fakeExpenses['celebration']['total_expenses'];
+    foreach (['davenport', 'celebration'] as $loc) {
+        // Get total expenses for location in date range
+        $stmt = $pdo->prepare("
+            SELECT SUM(amount) as total
+            FROM gb_expenses
+            WHERE location = ? AND expense_date >= ? AND expense_date <= ?
+        ");
+        $stmt->execute([$loc, $startDate, $endDate]);
+        $totalExpenses = $stmt->fetchColumn() ?: 0;
+
+        // Get category breakdown
+        $stmt = $pdo->prepare("
+            SELECT category as name, SUM(amount) as amount
+            FROM gb_expenses
+            WHERE location = ? AND expense_date >= ? AND expense_date <= ?
+            GROUP BY category
+            ORDER BY amount DESC
+            LIMIT 10
+        ");
+        $stmt->execute([$loc, $startDate, $endDate]);
+        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $expenseData[$loc] = [
+            'total_expenses' => $totalExpenses,
+            'categories' => $categories
+        ];
+
+        if ($totalExpenses > 0) {
+            $hasRealData = true;
+        }
+    }
+
+    // Fall back to demo data if no real data
+    if (!$hasRealData) {
+        $expenseData = [
+            'davenport' => [
+                'total_expenses' => 12500,
+                'categories' => [
+                    ['name' => 'Rent & Utilities', 'amount' => 4500],
+                    ['name' => 'Coaching Salaries', 'amount' => 5200],
+                    ['name' => 'Equipment & Supplies', 'amount' => 1800],
+                    ['name' => 'Marketing', 'amount' => 600],
+                    ['name' => 'Insurance', 'amount' => 400],
+                ]
+            ],
+            'celebration' => [
+                'total_expenses' => 18750,
+                'categories' => [
+                    ['name' => 'Rent & Utilities', 'amount' => 6800],
+                    ['name' => 'Coaching Salaries', 'amount' => 8200],
+                    ['name' => 'Equipment & Supplies', 'amount' => 2100],
+                    ['name' => 'Marketing', 'amount' => 900],
+                    ['name' => 'Insurance', 'amount' => 750],
+                ]
+            ]
+        ];
+    }
+
+    $davenportProfit = $davenportStats['revenue_period'] - $expenseData['davenport']['total_expenses'];
+    $celebrationProfit = $celebrationStats['revenue_period'] - $expenseData['celebration']['total_expenses'];
     $totalProfit = $davenportProfit + $celebrationProfit;
-    $totalExpenses = $fakeExpenses['davenport']['total_expenses'] + $fakeExpenses['celebration']['total_expenses'];
+    $totalExpenses = $expenseData['davenport']['total_expenses'] + $expenseData['celebration']['total_expenses'];
     $profitMargin = $combined['total_revenue'] > 0 ? ($totalProfit / $combined['total_revenue']) * 100 : 0;
     ?>
 
     <div class="executive-summary" style="background: linear-gradient(135deg, #f8fafb 0%, #ffffff 100%);">
         <h3>
             <i class="fas fa-chart-pie"></i> Profit & Loss Overview
-            <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
-                <i class="fas fa-flask"></i> DEMO DATA
-            </span>
+            <?php if ($hasRealData): ?>
+                <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+                    <i class="fas fa-check-circle"></i> REAL DATA
+                </span>
+            <?php else: ?>
+                <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+                    <i class="fas fa-flask"></i> DEMO DATA
+                </span>
+            <?php endif; ?>
         </h3>
         <div class="summary-grid">
             <div class="summary-card">
@@ -1180,7 +1224,7 @@ require_once 'includes/header.php';
             <div class="summary-card">
                 <div class="summary-label">Total Expenses</div>
                 <div class="summary-value" style="color: #c62828;">$<?= number_format($totalExpenses, 0) ?></div>
-                <div class="summary-subtext">From QuickBooks (demo)</div>
+                <div class="summary-subtext"><?= $hasRealData ? 'From QuickBooks' : 'Demo data' ?></div>
             </div>
 
             <div class="summary-card">
@@ -1223,12 +1267,12 @@ require_once 'includes/header.php';
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e8ecf2;">
                     <div style="font-weight: 700; color: var(--color-primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <span><i class="fas fa-school"></i> Davenport</span>
-                        <span>$<?= number_format($fakeExpenses['davenport']['total_expenses'], 0) ?></span>
+                        <span>$<?= number_format($expenseData['davenport']['total_expenses'], 0) ?></span>
                     </div>
                     <div class="simple-chart">
                         <?php
-                        $maxExpense = max(array_column($fakeExpenses['davenport']['categories'], 'amount'));
-                        foreach ($fakeExpenses['davenport']['categories'] as $expense):
+                        $maxExpense = max(array_column($expenseData['davenport']['categories'], 'amount'));
+                        foreach ($expenseData['davenport']['categories'] as $expense):
                             $percentage = ($expense['amount'] / $maxExpense) * 100;
                         ?>
                             <div class="chart-bar">
@@ -1256,12 +1300,12 @@ require_once 'includes/header.php';
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e8ecf2;">
                     <div style="font-weight: 700; color: #7b1fa2; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <span><i class="fas fa-school"></i> Celebration</span>
-                        <span>$<?= number_format($fakeExpenses['celebration']['total_expenses'], 0) ?></span>
+                        <span>$<?= number_format($expenseData['celebration']['total_expenses'], 0) ?></span>
                     </div>
                     <div class="simple-chart">
                         <?php
-                        $maxExpense = max(array_column($fakeExpenses['celebration']['categories'], 'amount'));
-                        foreach ($fakeExpenses['celebration']['categories'] as $expense):
+                        $maxExpense = max(array_column($expenseData['celebration']['categories'], 'amount'));
+                        foreach ($expenseData['celebration']['categories'] as $expense):
                             $percentage = ($expense['amount'] / $maxExpense) * 100;
                         ?>
                             <div class="chart-bar">
