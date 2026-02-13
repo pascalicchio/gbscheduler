@@ -59,8 +59,8 @@ try {
         $stmt->execute([$location]);
         $on_hold = $stmt->fetchColumn();
 
-        // True active (active - on hold)
-        $true_active = $active_members - $on_hold;
+        // Note: ZenPlanner members CSV includes members on hold
+        // So active_members is the final count, no subtraction needed
 
         // New members this month
         $stmt = $pdo->prepare("
@@ -107,7 +107,6 @@ try {
         $response[$location] = [
             'total_members' => (int)$active_members,
             'active_members' => (int)$active_members,
-            'true_active' => (int)$true_active,
             'on_hold' => (int)$on_hold,
             'new_this_month' => (int)$new_this_month,
             'churned_this_month' => (int)$churned_this_month,

@@ -36,8 +36,8 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
     $stmt->execute([$location]);
     $stats['on_hold'] = $stmt->fetchColumn();
 
-    // True active (active members - holds)
-    $stats['true_active'] = $stats['active_members'] - $stats['on_hold'];
+    // Note: ZenPlanner members CSV includes members on hold
+    // So active_members is the final count, no subtraction needed
 
     // ========================================
     // REVENUE METRICS
@@ -205,14 +205,14 @@ function getLocationStats($pdo, $location, $startDate, $endDate) {
     $stmt = $pdo->prepare("
         SELECT
             CASE
-                WHEN DATEDIFF(c.cancellation_date, m.join_date) <= 90 THEN '0-3 months'
-                WHEN DATEDIFF(c.cancellation_date, m.join_date) <= 180 THEN '3-6 months'
-                WHEN DATEDIFF(c.cancellation_date, m.join_date) <= 365 THEN '6-12 months'
+                WHEN DATEDIFF(c.cancellation_date, COALESCE(m.join_date, DATE_SUB(c.cancellation_date, INTERVAL 180 DAY))) <= 90 THEN '0-3 months'
+                WHEN DATEDIFF(c.cancellation_date, COALESCE(m.join_date, DATE_SUB(c.cancellation_date, INTERVAL 180 DAY))) <= 180 THEN '3-6 months'
+                WHEN DATEDIFF(c.cancellation_date, COALESCE(m.join_date, DATE_SUB(c.cancellation_date, INTERVAL 180 DAY))) <= 365 THEN '6-12 months'
                 ELSE '12+ months'
             END as tenure_bracket,
             COUNT(*) as count
         FROM gb_cancellations c
-        INNER JOIN gb_members m ON c.member_name = m.name AND c.location = m.location
+        LEFT JOIN gb_members m ON c.member_name = m.name AND c.location = m.location
         WHERE c.location = ? AND c.cancellation_date >= ? AND c.cancellation_date <= ?
         GROUP BY tenure_bracket
         ORDER BY FIELD(tenure_bracket, '0-3 months', '3-6 months', '6-12 months', '12+ months')
@@ -304,7 +304,7 @@ $celebrationStats = getLocationStats($pdo, 'celebration', $startDate, $endDate);
 // Combined stats for executive summary
 $combined = [
     'total_active' => $davenportStats['active_members'] + $celebrationStats['active_members'],
-    'total_true_active' => $davenportStats['true_active'] + $celebrationStats['true_active'],
+    'total_on_hold' => $davenportStats['on_hold'] + $celebrationStats['on_hold'],
     'total_revenue' => $davenportStats['revenue_period'] + $celebrationStats['revenue_period'],
     'avg_arm' => (($davenportStats['arm'] + $celebrationStats['arm']) / 2),
     'avg_ltv' => (($davenportStats['ltv'] + $celebrationStats['ltv']) / 2),
@@ -959,17 +959,17 @@ require_once 'includes/header.php';
 
             <div class="summary-card">
                 <div class="summary-label" x-data="{ show: false }">
-                    True Active Members
+                    Total Active Members
                     <i class="fas fa-info-circle info-icon" @mouseenter="show = true" @mouseleave="show = false"></i>
                     <div x-show="show" x-transition class="info-tooltip" x-cloak>
-                        <strong>True Active Members</strong>
-                        Active members minus those on hold. This is your actual training member count.
-                        <br><strong>Industry Benchmark:</strong> Aim for <10% hold rate
+                        <strong>Total Active Members</strong>
+                        All members with active status from ZenPlanner. This includes members currently on hold.
+                        <br><strong>Note:</strong> ZenPlanner exports include holds in the member count
                     </div>
                 </div>
-                <div class="summary-value"><?= number_format($combined['total_true_active']) ?></div>
+                <div class="summary-value"><?= number_format($combined['total_active']) ?></div>
                 <div class="summary-subtext">
-                    <?= number_format($combined['total_active']) ?> total active
+                    <?= number_format($combined['total_on_hold']) ?> currently on hold
                 </div>
             </div>
 
@@ -1232,7 +1232,7 @@ require_once 'includes/header.php';
                             </div>
                             <div class="metric-value"><?= number_format($davenportStats['active_members']) ?></div>
                             <div class="metric-subtext">
-                                <?= number_format($davenportStats['true_active']) ?> training (<?= $davenportStats['on_hold'] ?> on hold)
+                                <?= $davenportStats['on_hold'] ?> currently on hold
                             </div>
                         </div>
 
@@ -1575,7 +1575,7 @@ require_once 'includes/header.php';
                             </div>
                             <div class="metric-value"><?= number_format($celebrationStats['active_members']) ?></div>
                             <div class="metric-subtext">
-                                <?= number_format($celebrationStats['true_active']) ?> training (<?= $celebrationStats['on_hold'] ?> on hold)
+                                <?= $celebrationStats['on_hold'] ?> currently on hold
                             </div>
                         </div>
 
