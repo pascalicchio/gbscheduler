@@ -466,11 +466,11 @@ body {
     font-size: 0.85rem;
     color: #666;
     font-weight: 500;
+    margin-left: auto;
 }
 
 /* Dashboard Container */
 .dashboard-container {
-    padding: 20px;
     max-width: 1600px;
     margin: 0 auto;
 }
@@ -498,15 +498,20 @@ body {
 
 .data-freshness-badge {
     display: inline-block;
-    background: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
-    color: white;
+    background: white;
+    color: #333;
     padding: 6px 14px;
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 8px rgba(0, 201, 255, 0.3);
+    border: 2px solid transparent;
+    background-image:
+        linear-gradient(white, white),
+        linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
 }
 
 .summary-grid {
