@@ -1128,6 +1128,165 @@ require_once 'includes/header.php';
         </div>
     </div>
 
+    <!-- PROFIT & LOSS OVERVIEW -->
+    <?php
+    // FAKE DATA - Replace with real QuickBooks data later
+    $fakeExpenses = [
+        'davenport' => [
+            'total_expenses' => 12500,
+            'categories' => [
+                ['name' => 'Rent & Utilities', 'amount' => 4500],
+                ['name' => 'Coaching Salaries', 'amount' => 5200],
+                ['name' => 'Equipment & Supplies', 'amount' => 1800],
+                ['name' => 'Marketing', 'amount' => 600],
+                ['name' => 'Insurance', 'amount' => 400],
+            ]
+        ],
+        'celebration' => [
+            'total_expenses' => 18750,
+            'categories' => [
+                ['name' => 'Rent & Utilities', 'amount' => 6800],
+                ['name' => 'Coaching Salaries', 'amount' => 8200],
+                ['name' => 'Equipment & Supplies', 'amount' => 2100],
+                ['name' => 'Marketing', 'amount' => 900],
+                ['name' => 'Insurance', 'amount' => 750],
+            ]
+        ]
+    ];
+
+    $davenportProfit = $davenportStats['revenue_period'] - $fakeExpenses['davenport']['total_expenses'];
+    $celebrationProfit = $celebrationStats['revenue_period'] - $fakeExpenses['celebration']['total_expenses'];
+    $totalProfit = $davenportProfit + $celebrationProfit;
+    $totalExpenses = $fakeExpenses['davenport']['total_expenses'] + $fakeExpenses['celebration']['total_expenses'];
+    $profitMargin = $combined['total_revenue'] > 0 ? ($totalProfit / $combined['total_revenue']) * 100 : 0;
+    ?>
+
+    <div class="executive-summary" style="background: linear-gradient(135deg, #f8fafb 0%, #ffffff 100%);">
+        <h3>
+            <i class="fas fa-chart-pie"></i> Profit & Loss Overview
+            <span style="background: #fff3cd; color: #856404; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 700;">
+                <i class="fas fa-flask"></i> DEMO DATA
+            </span>
+        </h3>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-label">Total Revenue</div>
+                <div class="summary-value" style="color: #2e7d32;">$<?= number_format($combined['total_revenue'], 0) ?></div>
+                <div class="summary-subtext">Actual from gb_revenue</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Total Expenses</div>
+                <div class="summary-value" style="color: #c62828;">$<?= number_format($totalExpenses, 0) ?></div>
+                <div class="summary-subtext">From QuickBooks (demo)</div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Net Profit</div>
+                <div class="summary-value <?= $totalProfit >= 0 ? 'trend-positive' : 'trend-negative' ?>">
+                    $<?= number_format($totalProfit, 0) ?>
+                </div>
+                <div class="summary-subtext">
+                    <?= $totalProfit >= 0 ? 'Profitable' : 'Operating at loss' ?>
+                </div>
+            </div>
+
+            <div class="summary-card">
+                <div class="summary-label">Profit Margin</div>
+                <div class="summary-value <?= $profitMargin >= 20 ? 'trend-positive' : ($profitMargin >= 10 ? '' : 'trend-negative') ?>">
+                    <?= number_format($profitMargin, 1) ?>%
+                </div>
+                <?php
+                if ($profitMargin >= 20) {
+                    echo '<span class="benchmark-indicator benchmark-excellent">Excellent!</span>';
+                } elseif ($profitMargin >= 15) {
+                    echo '<span class="benchmark-indicator benchmark-good">Good</span>';
+                } elseif ($profitMargin >= 10) {
+                    echo '<span class="benchmark-indicator benchmark-average">Average</span>';
+                } else {
+                    echo '<span class="benchmark-indicator benchmark-below">Needs Work</span>';
+                }
+                ?>
+            </div>
+        </div>
+
+        <!-- Expense Breakdown by Location -->
+        <div style="margin-top: 30px;">
+            <h4 style="font-size: 1rem; font-weight: 700; color: var(--color-dark); margin-bottom: 16px;">
+                <i class="fas fa-receipt"></i> Expense Breakdown by Location
+            </h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+                <!-- Davenport Expenses -->
+                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e8ecf2;">
+                    <div style="font-weight: 700; color: var(--color-primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="fas fa-school"></i> Davenport</span>
+                        <span>$<?= number_format($fakeExpenses['davenport']['total_expenses'], 0) ?></span>
+                    </div>
+                    <div class="simple-chart">
+                        <?php
+                        $maxExpense = max(array_column($fakeExpenses['davenport']['categories'], 'amount'));
+                        foreach ($fakeExpenses['davenport']['categories'] as $expense):
+                            $percentage = ($expense['amount'] / $maxExpense) * 100;
+                        ?>
+                            <div class="chart-bar">
+                                <div class="chart-label"><?= $expense['name'] ?></div>
+                                <div class="chart-bar-container">
+                                    <div class="chart-bar-fill" style="width: <?= $percentage ?>%; background: linear-gradient(90deg, #00c9ff, #92fe9d);"></div>
+                                </div>
+                                <div class="chart-value">$<?= number_format($expense['amount'], 0) ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #e8ecf2; font-weight: 700;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #2e7d32;">Revenue:</span>
+                            <span>$<?= number_format($davenportStats['revenue_period'], 0) ?></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                            <span class="<?= $davenportProfit >= 0 ? 'trend-positive' : 'trend-negative' ?>">Net Profit:</span>
+                            <span class="<?= $davenportProfit >= 0 ? 'trend-positive' : 'trend-negative' ?>">$<?= number_format($davenportProfit, 0) ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Celebration Expenses -->
+                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e8ecf2;">
+                    <div style="font-weight: 700; color: #7b1fa2; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="fas fa-school"></i> Celebration</span>
+                        <span>$<?= number_format($fakeExpenses['celebration']['total_expenses'], 0) ?></span>
+                    </div>
+                    <div class="simple-chart">
+                        <?php
+                        $maxExpense = max(array_column($fakeExpenses['celebration']['categories'], 'amount'));
+                        foreach ($fakeExpenses['celebration']['categories'] as $expense):
+                            $percentage = ($expense['amount'] / $maxExpense) * 100;
+                        ?>
+                            <div class="chart-bar">
+                                <div class="chart-label"><?= $expense['name'] ?></div>
+                                <div class="chart-bar-container">
+                                    <div class="chart-bar-fill" style="width: <?= $percentage ?>%; background: linear-gradient(90deg, #7b1fa2, #ba68c8);"></div>
+                                </div>
+                                <div class="chart-value">$<?= number_format($expense['amount'], 0) ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #e8ecf2; font-weight: 700;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #2e7d32;">Revenue:</span>
+                            <span>$<?= number_format($celebrationStats['revenue_period'], 0) ?></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                            <span class="<?= $celebrationProfit >= 0 ? 'trend-positive' : 'trend-negative' ?>">Net Profit:</span>
+                            <span class="<?= $celebrationProfit >= 0 ? 'trend-positive' : 'trend-negative' ?>">$<?= number_format($celebrationProfit, 0) ?></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- LOCATION COMPARISON -->
     <div class="location-grid">
 
