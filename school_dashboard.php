@@ -1132,6 +1132,11 @@ require_once 'includes/header.php';
 
     <!-- PROFIT & LOSS OVERVIEW -->
     <?php
+    // Only show on localhost for testing (hide on production)
+    $is_localhost = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'gb-scheduler2.test'])
+                    || strpos($_SERVER['HTTP_HOST'] ?? '', '.test') !== false;
+
+    if ($is_localhost):
     // Try to get real expense data from database
     $expenseData = [];
     $hasRealData = false;
@@ -1332,6 +1337,7 @@ require_once 'includes/header.php';
             </div>
         </div>
     </div>
+    <?php endif; // End localhost-only P&L section ?>
 
     <!-- LOCATION COMPARISON -->
     <div class="location-grid">
