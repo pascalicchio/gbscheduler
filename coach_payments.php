@@ -476,7 +476,10 @@ foreach ($coach_data as $uid => $cd) {
 
 // Page setup
 $pageTitle = 'Payments Control | GB Scheduler';
-$extraHead = '';
+$extraHead = <<<HTML
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.css">
+<script src="https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.umd.min.js"></script>
+HTML;
 
 $extraCss = <<<CSS
     body { padding: 16px; }
@@ -891,6 +894,42 @@ $extraCss = <<<CSS
         font-size: 3em;
         color: #cbd5e0;
         margin-bottom: 15px;
+    }
+
+    /* Easepick Custom Styling */
+    .easepick-wrapper {
+        z-index: 9999 !important;
+    }
+
+    .preset-plugin-container {
+        padding: 12px;
+        border-right: 1px solid #e2e8f0;
+    }
+
+    .preset-plugin-container button {
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+    .preset-plugin-container button:hover {
+        background: rgba(0, 201, 255, 0.05);
+        border-color: rgba(0, 201, 255, 0.5);
+        transform: translateX(2px);
+    }
+
+    .preset-plugin-container button:last-child {
+        margin-bottom: 0;
     }
 
     /* ======================================== */
@@ -1582,89 +1621,100 @@ document.getElementById('coachInfoModal').addEventListener('click', function(e) 
     if (e.target === this) closeCoachInfoModal();
 });
 
-// Native date picker with week/month selection logic
+// Easepick date range picker with presets
 document.addEventListener('DOMContentLoaded', function() {
-    const startInput = document.getElementById('start_date');
-    const endInput = document.getElementById('end_date');
     const currentTab = '<?= $tab ?>';
+    const today = new Date();
 
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    // Helper functions for date calculations
+    function getStartOfWeek(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day; // Sunday = 0
+        return new Date(d.setDate(diff));
     }
 
-    // Weekly tab: Auto-select full week (Sunday to Saturday)
-    if (currentTab === 'weekly') {
-        startInput.addEventListener('change', function() {
-            if (this.value) {
-                const selected = new Date(this.value + 'T00:00:00');
-                const dayOfWeek = selected.getDay();
-                const sunday = new Date(selected);
-                sunday.setDate(selected.getDate() - dayOfWeek);
-                const saturday = new Date(sunday);
-                saturday.setDate(sunday.getDate() + 6);
-
-                startInput.value = formatDate(sunday);
-                endInput.value = formatDate(saturday);
-            }
-        });
-
-        endInput.addEventListener('change', function() {
-            if (this.value) {
-                const selected = new Date(this.value + 'T00:00:00');
-                const dayOfWeek = selected.getDay();
-                const sunday = new Date(selected);
-                sunday.setDate(selected.getDate() - dayOfWeek);
-                const saturday = new Date(sunday);
-                saturday.setDate(sunday.getDate() + 6);
-
-                startInput.value = formatDate(sunday);
-                endInput.value = formatDate(saturday);
-            }
-        });
+    function getEndOfWeek(date) {
+        const start = getStartOfWeek(date);
+        return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
     }
 
-    // Monthly tab: Auto-select full month
-    if (currentTab === 'monthly') {
-        startInput.addEventListener('change', function() {
-            if (this.value) {
-                const selected = new Date(this.value + 'T00:00:00');
-                const firstDay = new Date(selected.getFullYear(), selected.getMonth(), 1);
-                const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0);
-
-                startInput.value = formatDate(firstDay);
-                endInput.value = formatDate(lastDay);
-            }
-        });
-
-        endInput.addEventListener('change', function() {
-            if (this.value) {
-                const selected = new Date(this.value + 'T00:00:00');
-                const firstDay = new Date(selected.getFullYear(), selected.getMonth(), 1);
-                const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0);
-
-                startInput.value = formatDate(firstDay);
-                endInput.value = formatDate(lastDay);
-            }
-        });
+    function getStartOfMonth(date) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
     }
 
-    // For biweekly/history tabs: Set min/max constraints
-    if (currentTab === 'biweekly' || currentTab === 'history') {
-        startInput.addEventListener('change', function() {
-            if (this.value) {
-                endInput.setAttribute('min', this.value);
-            }
-        });
-
-        endInput.addEventListener('change', function() {
-            if (this.value) {
-                startInput.setAttribute('max', this.value);
-            }
-        });
+    function getEndOfMonth(date) {
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0);
     }
+
+    // Calculate preset dates
+    const thisWeekStart = getStartOfWeek(today);
+    const thisWeekEnd = getEndOfWeek(today);
+
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    const lastWeekEnd = new Date(lastWeekStart);
+    lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
+
+    const thisMonthStart = getStartOfMonth(today);
+    const thisMonthEnd = getEndOfMonth(today);
+
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+
+    // Easepick configuration
+    const pickerConfig = {
+        element: document.getElementById('start_date'),
+        css: [
+            'https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.css',
+        ],
+        format: 'YYYY-MM-DD',
+        readonly: false,
+        autoApply: false,
+        plugins: ['RangePlugin', 'PresetPlugin'],
+        RangePlugin: {
+            elementEnd: document.getElementById('end_date'),
+            tooltip: true,
+        },
+        PresetPlugin: {
+            position: 'left',
+            customPreset: {
+                'This Week': [thisWeekStart, thisWeekEnd],
+                'Last Week': [lastWeekStart, lastWeekEnd],
+                'This Month': [thisMonthStart, thisMonthEnd],
+                'Last Month': [lastMonthStart, lastMonthEnd],
+            }
+        },
+        setup(picker) {
+            // Weekly tab: Lock to full weeks (Sunday-Saturday)
+            if (currentTab === 'weekly') {
+                picker.on('select', (e) => {
+                    const { start, end } = e.detail;
+                    if (start && end) {
+                        const weekStart = getStartOfWeek(start);
+                        const weekEnd = getEndOfWeek(start);
+
+                        picker.setDateRange(weekStart, weekEnd);
+                    }
+                });
+            }
+
+            // Monthly tab: Lock to full months
+            if (currentTab === 'monthly') {
+                picker.on('select', (e) => {
+                    const { start, end } = e.detail;
+                    if (start && end) {
+                        const monthStart = getStartOfMonth(start);
+                        const monthEnd = getEndOfMonth(start);
+
+                        picker.setDateRange(monthStart, monthEnd);
+                    }
+                });
+            }
+        }
+    };
+
+    const picker = new easepick.create(pickerConfig);
 });
 </script>
 
