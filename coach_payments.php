@@ -584,7 +584,7 @@ $extraCss = <<<CSS
         border: 1px solid #e2e8f0;
         display: flex;
         gap: 12px;
-        align-items: flex-end;
+        align-items: center;
         margin-bottom: 20px;
         flex-wrap: wrap;
     }
@@ -594,6 +594,8 @@ $extraCss = <<<CSS
         flex-direction: column;
         flex: 1;
         min-width: 120px;
+        align-self: stretch;
+        justify-content: flex-end;
     }
 
     .form-group label {
@@ -1146,7 +1148,10 @@ require_once 'includes/header.php';
             <?php endforeach; ?>
         </select>
     </div>
-    <button type="submit" class="btn-apply">Apply</button>
+    <div class="form-group" style="flex: 0 0 auto; min-width: auto;">
+        <label style="opacity: 0; pointer-events: none;">-</label>
+        <button type="submit" class="btn-apply">Apply</button>
+    </div>
 </form>
 
 <?php if ($tab !== 'history'): ?>

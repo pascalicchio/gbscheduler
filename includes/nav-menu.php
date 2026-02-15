@@ -10,7 +10,7 @@
         <?php if (canManage()): ?>
             <a href="private_classes.php" <?= $currentPage === 'private_classes.php' ? 'class="active"' : '' ?>><i class="fas fa-money-bill-wave"></i> Private Classes</a>
             <a href="location_reports.php" <?= $currentPage === 'location_reports.php' ? 'class="active"' : '' ?>><i class="fas fa-file-invoice-dollar"></i> Payroll Reports</a>
-            <a href="coach_payments.php" <?= $currentPage === 'coach_payments.php' ? 'class="active"' : '' ?>><i class="fas fa-money-check-alt"></i> Coach Payments</a>
+            <a href="coach_payments.php" <?= $currentPage === 'coach_payments.php' ? 'class="active"' : '' ?>><i class="fas fa-money-check-alt"></i> Payments Control</a>
             <a href="classes.php" <?= $currentPage === 'classes.php' ? 'class="active"' : '' ?>><i class="fas fa-graduation-cap"></i> Class Templates</a>
             <a href="users.php" <?= in_array($currentPage, ['users.php', 'user_form.php']) ? 'class="active"' : '' ?>><i class="fas fa-users"></i> Users</a>
             <a href="inventory.php" <?= $currentPage === 'inventory.php' ? 'class="active"' : '' ?>><i class="fas fa-boxes"></i> Inventory</a>
