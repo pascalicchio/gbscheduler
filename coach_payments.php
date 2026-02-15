@@ -476,12 +476,7 @@ foreach ($coach_data as $uid => $cd) {
 
 // Page setup
 $pageTitle = 'Payments Control | GB Scheduler';
-$extraHead = <<<HTML
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
-HTML;
+$extraHead = '';
 
 $extraCss = <<<CSS
     body { padding: 16px; }
@@ -898,41 +893,10 @@ $extraCss = <<<CSS
         margin-bottom: 15px;
     }
 
-    /* Flatpickr presets */
-    .flatpickr-presets {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        padding: 8px;
-        border-top: 1px solid #e6e6e6;
-        background: #f5f5f5;
-    }
-
-    .flatpickr-presets button {
-        flex: 1;
-        min-width: 70px;
-        padding: 6px 8px;
-        border: 2px solid #e2e8f0;
-        background: white;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 0.75em;
-        font-weight: 600;
-    }
-
-    .flatpickr-presets button:hover {
-        background: rgba(0, 201, 255, 0.05);
-        border-color: rgba(0, 201, 255, 0.3);
-    }
-
     /* ======================================== */
     /* Mobile Responsive */
     /* ======================================== */
     @media (max-width: 768px) {
-        /* Flatpickr mobile input fix */
-        .flatpickr-input.flatpickr-mobile {
-            margin-bottom: 0 !important;
-        }
 
         /* Tabs - compact */
         .tabs {
@@ -1124,11 +1088,11 @@ require_once 'includes/header.php';
 
     <div class="form-group">
         <label>Start Date</label>
-        <input type="text" name="start" id="start_date" value="<?= $start_date ?>" readonly>
+        <input type="date" name="start" id="start_date" value="<?= $start_date ?>">
     </div>
     <div class="form-group">
         <label>End Date</label>
-        <input type="text" name="end" id="end_date" value="<?= $end_date ?>" readonly>
+        <input type="date" name="end" id="end_date" value="<?= $end_date ?>">
     </div>
     <div class="form-group">
         <label>Location</label>
@@ -1371,7 +1335,7 @@ require_once 'includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Payment Date</label>
-                    <input type="text" name="payment_date" id="modal_payment_date" value="<?= date('Y-m-d') ?>" required readonly>
+                    <input type="date" name="payment_date" id="modal_payment_date" value="<?= date('Y-m-d') ?>" required>
                 </div>
                 <div class="form-group">
                     <label>Payment Method</label>
@@ -1616,11 +1580,10 @@ document.getElementById('coachInfoModal').addEventListener('click', function(e) 
     if (e.target === this) closeCoachInfoModal();
 });
 
-// Flatpickr initialization
+// Native date picker with week/month selection logic
 document.addEventListener('DOMContentLoaded', function() {
     const startInput = document.getElementById('start_date');
     const endInput = document.getElementById('end_date');
-    const paymentDateInput = document.getElementById('modal_payment_date');
     const currentTab = '<?= $tab ?>';
 
     function formatDate(date) {
@@ -1630,186 +1593,76 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${year}-${month}-${day}`;
     }
 
-    function getPresetDates(preset) {
-        const today = new Date();
-        let start, end;
+    // Weekly tab: Auto-select full week (Sunday to Saturday)
+    if (currentTab === 'weekly') {
+        startInput.addEventListener('change', function() {
+            if (this.value) {
+                const selected = new Date(this.value + 'T00:00:00');
+                const dayOfWeek = selected.getDay();
+                const sunday = new Date(selected);
+                sunday.setDate(selected.getDate() - dayOfWeek);
+                const saturday = new Date(sunday);
+                saturday.setDate(sunday.getDate() + 6);
 
-        switch(preset) {
-            case 'this-month':
-                start = new Date(today.getFullYear(), today.getMonth(), 1);
-                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                break;
-            case 'last-month':
-                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                end = new Date(today.getFullYear(), today.getMonth(), 0);
-                break;
-            case 'this-week':
-                const dayOfWeek = today.getDay();
-                start = new Date(today);
-                start.setDate(today.getDate() - dayOfWeek);
-                end = new Date(start);
-                end.setDate(start.getDate() + 6);
-                break;
-            case 'last-week':
-                const lastWeekDay = today.getDay();
-                start = new Date(today);
-                start.setDate(today.getDate() - lastWeekDay - 7);
-                end = new Date(start);
-                end.setDate(start.getDate() + 6);
-                break;
-        }
-        return { start, end };
-    }
-
-    function createPresetButtons(fp) {
-        const presetContainer = document.createElement('div');
-        presetContainer.className = 'flatpickr-presets';
-
-        const presets = [
-            { label: 'This Week', value: 'this-week' },
-            { label: 'Last Week', value: 'last-week' },
-            { label: 'This Month', value: 'this-month' },
-            { label: 'Last Month', value: 'last-month' }
-        ];
-
-        presets.forEach(preset => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = preset.label;
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const dates = getPresetDates(preset.value);
-                startPicker.setDate(dates.start, true);
-                endPicker.setDate(dates.end, true);
-                fp.close();
-            });
-            presetContainer.appendChild(btn);
+                startInput.value = formatDate(sunday);
+                endInput.value = formatDate(saturday);
+            }
         });
 
-        return presetContainer;
+        endInput.addEventListener('change', function() {
+            if (this.value) {
+                const selected = new Date(this.value + 'T00:00:00');
+                const dayOfWeek = selected.getDay();
+                const sunday = new Date(selected);
+                sunday.setDate(selected.getDate() - dayOfWeek);
+                const saturday = new Date(sunday);
+                saturday.setDate(sunday.getDate() + 6);
+
+                startInput.value = formatDate(sunday);
+                endInput.value = formatDate(saturday);
+            }
+        });
     }
 
-    // Use monthSelect plugin for monthly tab, regular datepicker for others
+    // Monthly tab: Auto-select full month
     if (currentTab === 'monthly') {
-        // Month picker for monthly tab
-        const startPicker = flatpickr(startInput, {
-            plugins: [
-                new monthSelectPlugin({
-                    shorthand: false,
-                    dateFormat: "Y-m-d",
-                    altFormat: "F Y"
-                })
-            ],
-            onChange: function(selectedDates) {
-                if (selectedDates[0]) {
-                    // Set to first day of month
-                    const date = new Date(selectedDates[0]);
-                    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-                    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-                    
-                    startPicker.setDate(firstDay, false);
-                    endPicker.setDate(lastDay, true);
-                }
+        startInput.addEventListener('change', function() {
+            if (this.value) {
+                const selected = new Date(this.value + 'T00:00:00');
+                const firstDay = new Date(selected.getFullYear(), selected.getMonth(), 1);
+                const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0);
+
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
             }
         });
 
-        const endPicker = flatpickr(endInput, {
-            plugins: [
-                new monthSelectPlugin({
-                    shorthand: false,
-                    dateFormat: "Y-m-d",
-                    altFormat: "F Y"
-                })
-            ],
-            onChange: function(selectedDates) {
-                if (selectedDates[0]) {
-                    // Set to last day of month
-                    const date = new Date(selectedDates[0]);
-                    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-                    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-                    
-                    startPicker.setDate(firstDay, true);
-                    endPicker.setDate(lastDay, false);
-                }
+        endInput.addEventListener('change', function() {
+            if (this.value) {
+                const selected = new Date(this.value + 'T00:00:00');
+                const firstDay = new Date(selected.getFullYear(), selected.getMonth(), 1);
+                const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0);
+
+                startInput.value = formatDate(firstDay);
+                endInput.value = formatDate(lastDay);
             }
         });
-    } else {
-        // Regular date picker for weekly/biweekly/history tabs
-        const fpConfig = {
-            dateFormat: 'Y-m-d',
-            locale: { firstDayOfWeek: 0 },
-            onReady: function(selectedDates, dateStr, instance) {
-                instance.calendarContainer.appendChild(createPresetButtons(instance));
-            }
-        };
-
-        // For weekly tab, use week mode to select full weeks only
-        if (currentTab === 'weekly') {
-            const startPicker = flatpickr(startInput, {
-                ...fpConfig,
-                onChange: function(selectedDates) {
-                    if (selectedDates[0]) {
-                        // Calculate Sunday (start of week) and Saturday (end of week)
-                        const selected = new Date(selectedDates[0]);
-                        const dayOfWeek = selected.getDay();
-                        const sunday = new Date(selected);
-                        sunday.setDate(selected.getDate() - dayOfWeek);
-                        const saturday = new Date(sunday);
-                        saturday.setDate(sunday.getDate() + 6);
-
-                        // Set both dates to the full week
-                        startPicker.setDate(sunday, false);
-                        endPicker.setDate(saturday, true);
-                    }
-                }
-            });
-
-            const endPicker = flatpickr(endInput, {
-                ...fpConfig,
-                onChange: function(selectedDates) {
-                    if (selectedDates[0]) {
-                        // Calculate Sunday (start of week) and Saturday (end of week)
-                        const selected = new Date(selectedDates[0]);
-                        const dayOfWeek = selected.getDay();
-                        const sunday = new Date(selected);
-                        sunday.setDate(selected.getDate() - dayOfWeek);
-                        const saturday = new Date(sunday);
-                        saturday.setDate(sunday.getDate() + 6);
-
-                        // Set both dates to the full week
-                        startPicker.setDate(sunday, true);
-                        endPicker.setDate(saturday, false);
-                    }
-                }
-            });
-        } else {
-            // Regular mode for biweekly/history tabs
-            const startPicker = flatpickr(startInput, {
-                ...fpConfig,
-                onChange: function(selectedDates) {
-                    if (selectedDates[0]) {
-                        endPicker.set('minDate', selectedDates[0]);
-                    }
-                }
-            });
-
-            const endPicker = flatpickr(endInput, {
-                ...fpConfig,
-                onChange: function(selectedDates) {
-                    if (selectedDates[0]) {
-                        startPicker.set('maxDate', selectedDates[0]);
-                    }
-                }
-            });
-        }
     }
 
-    // Payment date picker (simple, no presets)
-    flatpickr(paymentDateInput, {
-        dateFormat: 'Y-m-d',
-        locale: { firstDayOfWeek: 0 }
-    });
+    // For biweekly/history tabs: Set min/max constraints
+    if (currentTab === 'biweekly' || currentTab === 'history') {
+        startInput.addEventListener('change', function() {
+            if (this.value) {
+                endInput.setAttribute('min', this.value);
+            }
+        });
+
+        endInput.addEventListener('change', function() {
+            if (this.value) {
+                startInput.setAttribute('max', this.value);
+            }
+        });
+    }
 });
 </script>
 
