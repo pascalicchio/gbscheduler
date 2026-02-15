@@ -477,7 +477,6 @@ foreach ($coach_data as $uid => $cd) {
 // Page setup
 $pageTitle = 'Payments Control | GB Scheduler';
 $extraHead = <<<HTML
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.css">
 <script src="https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.umd.min.js"></script>
 HTML;
 
@@ -899,27 +898,28 @@ $extraCss = <<<CSS
     /* Easepick Custom Styling */
     .easepick-wrapper {
         z-index: 9999 !important;
+        font-family: inherit;
+        border-radius: 12px !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
     }
 
+    /* Preset buttons */
     .preset-plugin-container {
-        padding: 12px;
-        border-right: 1px solid #e2e8f0;
+        background: #f8fafb;
+        padding: 16px;
     }
 
     .preset-plugin-container button {
-        display: block;
         width: 100%;
         padding: 10px 16px;
         margin-bottom: 8px;
         background: white;
         border: 2px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 10px;
         color: #2c3e50;
         font-weight: 600;
         font-size: 0.85rem;
-        cursor: pointer;
         transition: all 0.2s;
-        text-align: left;
     }
 
     .preset-plugin-container button:hover {
@@ -928,8 +928,23 @@ $extraCss = <<<CSS
         transform: translateX(2px);
     }
 
-    .preset-plugin-container button:last-child {
-        margin-bottom: 0;
+    /* Selected dates - gradient */
+    .easepick-wrapper .day.selected,
+    .easepick-wrapper .day.start,
+    .easepick-wrapper .day.end {
+        background: linear-gradient(135deg, rgb(0, 201, 255), rgb(146, 254, 157)) !important;
+        color: white !important;
+    }
+
+    /* In-range dates */
+    .easepick-wrapper .day.in-range {
+        background: rgba(0, 201, 255, 0.15) !important;
+    }
+
+    /* Today indicator */
+    .easepick-wrapper .day.today {
+        border: 2px solid rgb(0, 201, 255) !important;
+        font-weight: 700;
     }
 
     /* ======================================== */
@@ -1127,11 +1142,11 @@ require_once 'includes/header.php';
 
     <div class="form-group">
         <label>Start Date</label>
-        <input type="date" name="start" id="start_date" value="<?= $start_date ?>">
+        <input type="text" name="start" id="start_date" value="<?= $start_date ?>" placeholder="Click to select date">
     </div>
     <div class="form-group">
         <label>End Date</label>
-        <input type="date" name="end" id="end_date" value="<?= $end_date ?>">
+        <input type="text" name="end" id="end_date" value="<?= $end_date ?>" placeholder="Click to select date">
     </div>
     <div class="form-group">
         <label>Location</label>
@@ -1625,6 +1640,8 @@ document.getElementById('coachInfoModal').addEventListener('click', function(e) 
 document.addEventListener('DOMContentLoaded', function() {
     const currentTab = '<?= $tab ?>';
     const today = new Date();
+    const startEl = document.getElementById('start_date');
+    const endEl = document.getElementById('end_date');
 
     // Helper functions for date calculations
     function getStartOfWeek(date) {
@@ -1663,17 +1680,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
 
     // Easepick configuration
-    const pickerConfig = {
-        element: document.getElementById('start_date'),
+    const picker = new easepick.create({
+        element: startEl,
         css: [
             'https://cdn.jsdelivr.net/npm/@easepick/bundle@1.2.1/dist/index.css',
         ],
         format: 'YYYY-MM-DD',
-        readonly: false,
-        autoApply: false,
+        firstDay: 0, // 0 = Sunday, 1 = Monday
         plugins: ['RangePlugin', 'PresetPlugin'],
         RangePlugin: {
-            elementEnd: document.getElementById('end_date'),
+            elementEnd: endEl,
             tooltip: true,
         },
         PresetPlugin: {
@@ -1693,7 +1709,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (start && end) {
                         const weekStart = getStartOfWeek(start);
                         const weekEnd = getEndOfWeek(start);
-
                         picker.setDateRange(weekStart, weekEnd);
                     }
                 });
@@ -1706,15 +1721,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (start && end) {
                         const monthStart = getStartOfMonth(start);
                         const monthEnd = getEndOfMonth(start);
-
                         picker.setDateRange(monthStart, monthEnd);
                     }
                 });
             }
         }
-    };
+    });
 
-    const picker = new easepick.create(pickerConfig);
+    console.log('Easepick initialized with Sunday start:', picker);
 });
 </script>
 

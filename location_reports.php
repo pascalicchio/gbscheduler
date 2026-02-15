@@ -11,7 +11,7 @@ $view_mode  = $_GET['view'] ?? 'summary';
 $filter_coach_id = $_GET['coach_id'] ?? '';
 
 $locations = $pdo->query("SELECT id, name FROM locations ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
-$coaches = $pdo->query("SELECT * FROM users WHERE role != 'manager' ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$coaches = $pdo->query("SELECT * FROM users ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 $master_data = [];
 $grand_total_pay = 0;
@@ -24,6 +24,9 @@ foreach ($coaches as $c) {
         'info' => $c,
         'regular_pay' => 0,
         'private_pay' => 0,
+        'fixed_salary' => 0,
+        'commission_pay' => 0,
+        'deduction' => 0,
         'total_pay' => 0,
         'total_hours' => 0,
         'activities' => []
@@ -110,6 +113,170 @@ foreach ($priv_rows as $row) {
         'qty' => '1',
         'pay' => $pay
     ];
+}
+
+// Add Fixed Salary (monthly)
+foreach ($master_data as $uid => $data) {
+    $fixed_salary = (float)($data['info']['fixed_salary'] ?? 0);
+    $salary_location_id = $data['info']['fixed_salary_location_id'] ?? null;
+
+    if ($fixed_salary > 0 && $salary_location_id) {
+        // Get location name
+        $salary_location = null;
+        foreach ($locations as $loc) {
+            if ($loc['id'] == $salary_location_id) {
+                $salary_location = $loc['name'];
+                break;
+            }
+        }
+
+        $master_data[$uid]['fixed_salary'] = $fixed_salary;
+        $master_data[$uid]['total_pay'] += $fixed_salary;
+
+        // Add as an activity entry for the first day of the period
+        $master_data[$uid]['activities'][] = [
+            'type' => 'salary',
+            'date' => $start_date,
+            'time' => '-',
+            'desc' => 'Monthly Fixed Salary',
+            'location' => $salary_location ?? 'Unknown',
+            'location_id' => $salary_location_id,
+            'detail' => 'Monthly Salary',
+            'rate' => $fixed_salary,
+            'qty' => '1',
+            'pay' => $fixed_salary
+        ];
+    }
+}
+
+// Add Commission from Conversions (monthly)
+$period_month = date('Y-m-01', strtotime($start_date));
+$conv_sql = "SELECT user_id, conversions FROM user_conversions WHERE period_month = ?";
+$stmt = $pdo->prepare($conv_sql);
+$stmt->execute([$period_month]);
+$conv_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($conv_rows as $row) {
+    $uid = $row['user_id'];
+    if (!isset($master_data[$uid])) continue;
+
+    $conversions = $row['conversions'];
+    $commission = 0;
+
+    // Parse commission tiers - find which tier the conversions fall into
+    $tiers_json = $master_data[$uid]['info']['commission_tiers'] ?? null;
+    if ($tiers_json && $conversions > 0) {
+        $tiers = json_decode($tiers_json, true);
+        if ($tiers && is_array($tiers)) {
+            // Sort tiers by min value (descending to find highest matching tier first)
+            usort($tiers, function($a, $b) {
+                return $b['min'] - $a['min'];
+            });
+
+            // Find which tier the conversion count falls into
+            foreach ($tiers as $tier) {
+                $tier_min = $tier['min'];
+                $tier_max = $tier['max'] ?? 999999;
+                $tier_rate = $tier['rate'];
+
+                // If conversions >= tier minimum, use this tier's rate for ALL conversions
+                if ($conversions >= $tier_min) {
+                    $commission = $conversions * $tier_rate;
+                    break;
+                }
+            }
+        }
+    }
+
+    if ($commission > 0) {
+        // Determine location for commission (use first regular class location or salary location)
+        $commission_location_id = $master_data[$uid]['info']['fixed_salary_location_id'] ?? null;
+        $commission_location = 'Unknown';
+
+        if (!$commission_location_id && !empty($master_data[$uid]['activities'])) {
+            // Use location from first activity
+            $first_act = $master_data[$uid]['activities'][0];
+            $commission_location_id = $first_act['location_id'];
+            $commission_location = $first_act['location'];
+        } else {
+            // Get location name
+            foreach ($locations as $loc) {
+                if ($loc['id'] == $commission_location_id) {
+                    $commission_location = $loc['name'];
+                    break;
+                }
+            }
+        }
+
+        $master_data[$uid]['commission_pay'] = $commission;
+        $master_data[$uid]['total_pay'] += $commission;
+
+        // Add as an activity entry
+        $master_data[$uid]['activities'][] = [
+            'type' => 'commission',
+            'date' => $start_date,
+            'time' => '-',
+            'desc' => "Commission ($conversions conversions)",
+            'location' => $commission_location,
+            'location_id' => $commission_location_id,
+            'detail' => "$conversions conversions",
+            'rate' => $commission,
+            'qty' => '1',
+            'pay' => $commission
+        ];
+    }
+}
+
+// Apply Deductions
+$ded_sql = "SELECT user_id, location_id, amount, reason FROM user_deductions
+             WHERE period_month = ? AND period_start IS NULL AND period_end IS NULL";
+$stmt = $pdo->prepare($ded_sql);
+$stmt->execute([$period_month]);
+$ded_rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($ded_rows as $row) {
+    $uid = $row['user_id'];
+    if (!isset($master_data[$uid])) continue;
+
+    $deduction = (float)$row['amount'];
+    $ded_location_id = $row['location_id'];
+
+    if ($deduction > 0) {
+        // Get location name
+        $ded_location = 'Unknown';
+        if ($ded_location_id) {
+            foreach ($locations as $loc) {
+                if ($loc['id'] == $ded_location_id) {
+                    $ded_location = $loc['name'];
+                    break;
+                }
+            }
+        } else {
+            // Use first activity location if no location specified
+            if (!empty($master_data[$uid]['activities'])) {
+                $first_act = $master_data[$uid]['activities'][0];
+                $ded_location_id = $first_act['location_id'];
+                $ded_location = $first_act['location'];
+            }
+        }
+
+        $master_data[$uid]['deduction'] += $deduction;
+        $master_data[$uid]['total_pay'] -= $deduction;
+
+        // Add as an activity entry (negative pay)
+        $master_data[$uid]['activities'][] = [
+            'type' => 'deduction',
+            'date' => $start_date,
+            'time' => '-',
+            'desc' => 'Deduction',
+            'location' => $ded_location,
+            'location_id' => $ded_location_id,
+            'detail' => $row['reason'] ?? 'Deduction',
+            'rate' => -$deduction,
+            'qty' => '1',
+            'pay' => -$deduction
+        ];
+    }
 }
 
 foreach ($master_data as $uid => $data) {
@@ -636,6 +803,24 @@ $extraCss = <<<CSS
             border: 1px solid rgba(255, 152, 0, 0.3);
         }
 
+        .badge-salary {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.05));
+            color: #2e7d32;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .badge-commission {
+            background: linear-gradient(135deg, rgba(156, 39, 176, 0.15), rgba(156, 39, 176, 0.05));
+            color: #6a1b9a;
+            border: 1px solid rgba(156, 39, 176, 0.3);
+        }
+
+        .badge-deduction {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(244, 67, 54, 0.05));
+            color: #c62828;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
         .pdf-only {
             display: none;
             margin-bottom: 24px;
@@ -716,6 +901,24 @@ $extraCss = <<<CSS
             background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
             color: #e65100;
             border-left: 3px solid #f57c00;
+        }
+
+        .activity-item.salary {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            border-left: 3px solid #4caf50;
+        }
+
+        .activity-item.commission {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            color: #6a1b9a;
+            border-left: 3px solid #9c27b0;
+        }
+
+        .activity-item.deduction {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            color: #c62828;
+            border-left: 3px solid #f44336;
         }
 
         .activity-item:hover {
@@ -1125,10 +1328,13 @@ require_once 'includes/header.php';
                 <table class="sum-table">
                     <thead>
                         <tr>
-                            <th>Coach</th>
+                            <th>Employee</th>
                             <th>Reg. Hours</th>
                             <th class="col-right">Reg. Pay</th>
                             <th class="col-right">Priv. Pay</th>
+                            <th class="col-right">Salary</th>
+                            <th class="col-right">Commission</th>
+                            <th class="col-right">Deduction</th>
                             <th class="col-right">Total</th>
                         </tr>
                     </thead>
@@ -1138,19 +1344,28 @@ require_once 'includes/header.php';
                             $loc_reg_pay = 0;
                             $loc_reg_hrs = 0;
                             $loc_priv_pay = 0;
+                            $loc_salary = 0;
+                            $loc_commission = 0;
+                            $loc_deduction = 0;
                             foreach ($data['activities'] as $act) {
                                 if ($act['location_id'] == $loc['id']) {
                                     if ($act['type'] == 'regular') {
                                         $loc_reg_pay += $act['pay'];
                                         $loc_reg_hrs += (float)$act['qty'];
-                                    } else {
+                                    } elseif ($act['type'] == 'private') {
                                         $loc_priv_pay += $act['pay'];
+                                    } elseif ($act['type'] == 'salary') {
+                                        $loc_salary += $act['pay'];
+                                    } elseif ($act['type'] == 'commission') {
+                                        $loc_commission += $act['pay'];
+                                    } elseif ($act['type'] == 'deduction') {
+                                        $loc_deduction += abs($act['pay']);
                                     }
                                 }
                             }
-                            if ($loc_reg_hrs == 0 && $loc_reg_pay == 0 && $loc_priv_pay == 0) continue;
+                            $loc_total_coach = $loc_reg_pay + $loc_priv_pay + $loc_salary + $loc_commission - $loc_deduction;
+                            if ($loc_total_coach == 0 && $loc_reg_hrs == 0) continue;
                             $has_data = true;
-                            $loc_total_coach = $loc_reg_pay + $loc_priv_pay;
                             $loc_total += $loc_total_coach;
                             ?>
                             <tr>
@@ -1158,11 +1373,14 @@ require_once 'includes/header.php';
                                 <td><?= number_format($loc_reg_hrs, 2) ?></td>
                                 <td class="col-money muted">$<?= number_format($loc_reg_pay, 2) ?></td>
                                 <td class="col-money muted">$<?= number_format($loc_priv_pay, 2) ?></td>
+                                <td class="col-money muted"><?= $loc_salary > 0 ? '$' . number_format($loc_salary, 2) : '-' ?></td>
+                                <td class="col-money muted"><?= $loc_commission > 0 ? '$' . number_format($loc_commission, 2) : '-' ?></td>
+                                <td class="col-money muted" style="color: #dc3545;"><?= $loc_deduction > 0 ? '-$' . number_format($loc_deduction, 2) : '-' ?></td>
                                 <td class="col-money col-total">$<?= number_format($loc_total_coach, 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <tr class="loc-total-row">
-                            <td colspan="4" class="col-right">LOCATION TOTAL:</td>
+                            <td colspan="7" class="col-right">LOCATION TOTAL:</td>
                             <td class="col-money col-total loc-total-value">$<?= number_format($loc_total, 2) ?></td>
                         </tr>
                     </tbody>
@@ -1245,14 +1463,22 @@ require_once 'includes/header.php';
                                     <td>
                                         <?php if ($act['type'] == 'regular'): ?>
                                             <span class="badge badge-reg">Class</span> <?= e($act['desc']) ?>
+                                        <?php elseif ($act['type'] == 'salary'): ?>
+                                            <span class="badge badge-salary">Salary</span> <?= e($act['desc']) ?>
+                                        <?php elseif ($act['type'] == 'commission'): ?>
+                                            <span class="badge badge-commission">Commission</span> <?= e($act['desc']) ?>
+                                        <?php elseif ($act['type'] == 'deduction'): ?>
+                                            <span class="badge badge-deduction">Deduction</span> <?= e($act['desc']) ?>
                                         <?php else: ?>
                                             <span class="badge badge-priv">Private</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= $act['detail'] ?></td>
-                                    <td class="col-right"><?= ($act['rate'] == '-' || $act['rate'] == 0) ? '-' : '$' . number_format($act['rate'], 2) ?></td>
+                                    <td class="col-right"><?= ($act['rate'] == '-' || $act['rate'] == 0) ? '-' : '$' . number_format(abs($act['rate']), 2) ?></td>
                                     <td class="col-right"><?= $act['qty'] ?></td>
-                                    <td class="col-right col-money">$<?= number_format($act['pay'], 2) ?></td>
+                                    <td class="col-right col-money" style="<?= $act['pay'] < 0 ? 'color: #dc3545;' : '' ?>">
+                                        <?= $act['pay'] < 0 ? '-' : '' ?>$<?= number_format(abs($act['pay']), 2) ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -1341,8 +1567,20 @@ require_once 'includes/header.php';
                                     <?php foreach ($acts as $act): ?>
                                         <div class="activity-item <?= $act['type'] ?>">
                                             <span class="activity-time"><?= $act['time'] ?></span>
-                                            <span class="activity-desc"><?= $act['type'] === 'regular' ? e($act['desc']) : 'Private' ?></span>
-                                            <span class="activity-pay">$<?= number_format($act['pay'], 2) ?></span>
+                                            <span class="activity-desc">
+                                                <?php if ($act['type'] === 'regular'): ?>
+                                                    <?= e($act['desc']) ?>
+                                                <?php elseif ($act['type'] === 'salary'): ?>
+                                                    Salary
+                                                <?php elseif ($act['type'] === 'commission'): ?>
+                                                    Commission
+                                                <?php elseif ($act['type'] === 'deduction'): ?>
+                                                    Deduction
+                                                <?php else: ?>
+                                                    Private
+                                                <?php endif; ?>
+                                            </span>
+                                            <span class="activity-pay"><?= $act['pay'] < 0 ? '-' : '' ?>$<?= number_format(abs($act['pay']), 2) ?></span>
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
