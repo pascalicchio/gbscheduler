@@ -116,26 +116,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     } elseif (isset($_POST['action']) && $_POST['action'] === 'update_deduction') {
         $user_id = $_POST['user_id'];
-        $period_month = $_POST['period_month'];
         $amount = $_POST['amount'] ?? 0;
         $reason = $_POST['reason'] ?? '';
         $ded_location_id = !empty($_POST['location_id']) ? $_POST['location_id'] : null;
 
-        // Upsert deduction (scoped by location)
-        $check = $pdo->prepare("SELECT id FROM user_deductions WHERE user_id = ? AND period_month = ? AND location_id " . ($ded_location_id ? "= ?" : "IS NULL"));
-        $check_params = [$user_id, $period_month];
-        if ($ded_location_id) $check_params[] = $ded_location_id;
+        // Get period dates - use period_start/period_end for weekly/biweekly, period_month for monthly
+        $period_start = !empty($_POST['period_start']) ? $_POST['period_start'] : null;
+        $period_end = !empty($_POST['period_end']) ? $_POST['period_end'] : null;
+        $period_month = !empty($_POST['period_month']) ? $_POST['period_month'] : null;
+
+        // Build WHERE clause based on what period data we have
+        if ($period_start && $period_end) {
+            // Weekly/biweekly - use period_start/period_end
+            $where_clause = "user_id = ? AND period_start = ? AND period_end = ? AND location_id " . ($ded_location_id ? "= ?" : "IS NULL");
+            $check_params = [$user_id, $period_start, $period_end];
+            if ($ded_location_id) $check_params[] = $ded_location_id;
+        } else {
+            // Monthly - use period_month
+            $where_clause = "user_id = ? AND period_month = ? AND period_start IS NULL AND period_end IS NULL AND location_id " . ($ded_location_id ? "= ?" : "IS NULL");
+            $check_params = [$user_id, $period_month];
+            if ($ded_location_id) $check_params[] = $ded_location_id;
+        }
+
+        // Check if deduction already exists
+        $check = $pdo->prepare("SELECT id FROM user_deductions WHERE " . $where_clause);
         $check->execute($check_params);
 
         if ($check->fetch()) {
-            $upd_sql = "UPDATE user_deductions SET amount = ?, reason = ?, created_by = ? WHERE user_id = ? AND period_month = ? AND location_id " . ($ded_location_id ? "= ?" : "IS NULL");
-            $upd_params = [$amount, $reason, getUserId(), $user_id, $period_month];
-            if ($ded_location_id) $upd_params[] = $ded_location_id;
+            // Update existing deduction
+            $upd_sql = "UPDATE user_deductions SET amount = ?, reason = ?, created_by = ? WHERE " . $where_clause;
+            $upd_params = [$amount, $reason, getUserId()];
+            $upd_params = array_merge($upd_params, $check_params);
             $stmt = $pdo->prepare($upd_sql);
             $stmt->execute($upd_params);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO user_deductions (user_id, location_id, period_month, amount, reason, created_by) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$user_id, $ded_location_id, $period_month, $amount, $reason, getUserId()]);
+            // Insert new deduction
+            $stmt = $pdo->prepare("INSERT INTO user_deductions (user_id, location_id, period_month, period_start, period_end, amount, reason, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $ded_location_id, $period_month, $period_start, $period_end, $amount, $reason, getUserId()]);
         }
 
         setFlash("Deduction updated successfully!", 'success');
@@ -356,8 +373,16 @@ if ($tab !== 'history') {
     }
 
     // Apply deductions (scoped by location filter)
-    $ded_sql = "SELECT user_id, amount, reason FROM user_deductions WHERE period_month = ?";
-    $ded_params = [$period_month];
+    // For weekly/biweekly: match period_start/period_end
+    // For monthly: match period_month
+    if ($tab === 'weekly' || $tab === 'biweekly') {
+        $ded_sql = "SELECT user_id, amount, reason FROM user_deductions WHERE period_start = ? AND period_end = ?";
+        $ded_params = [$start_date, $end_date];
+    } else {
+        $ded_sql = "SELECT user_id, amount, reason FROM user_deductions WHERE period_month = ? AND period_start IS NULL AND period_end IS NULL";
+        $ded_params = [$period_month];
+    }
+
     if ($filter_location_id) {
         $ded_sql .= " AND location_id = ?";
         $ded_params[] = $filter_location_id;
@@ -450,7 +475,7 @@ foreach ($coach_data as $uid => $cd) {
 }
 
 // Page setup
-$pageTitle = 'Coach Payments | GB Scheduler';
+$pageTitle = 'Payments Control | GB Scheduler';
 $extraHead = <<<HTML
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
@@ -1059,7 +1084,7 @@ require_once 'includes/header.php';
 ?>
 
 <div class="page-header">
-    <h2><i class="fas fa-money-check-alt"></i> Coach Payments</h2>
+    <h2><i class="fas fa-money-check-alt"></i> Payments Control</h2>
     <?php include 'includes/nav-menu.php'; ?>
 </div>
 
@@ -1212,7 +1237,7 @@ require_once 'includes/header.php';
                             <?php else: ?>
                                 -
                             <?php endif; ?>
-                            <button type="button" onclick="openDeductionModal(<?= $uid ?>, <?= htmlspecialchars(json_encode($data['info']['name']), ENT_QUOTES) ?>, <?= $data['deduction'] ?>, <?= htmlspecialchars(json_encode($data['deduction_reason']), ENT_QUOTES) ?>, '<?= date('Y-m-01', strtotime($start_date)) ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit deduction">
+                            <button type="button" onclick="openDeductionModal(<?= $uid ?>, <?= htmlspecialchars(json_encode($data['info']['name']), ENT_QUOTES) ?>, <?= $data['deduction'] ?>, <?= htmlspecialchars(json_encode($data['deduction_reason']), ENT_QUOTES) ?>, '<?= $start_date ?>', '<?= $end_date ?>')" class="btn-icon" style="margin-left: 4px;" title="Edit deduction">
                                 <i class="fas fa-minus-circle"></i>
                             </button>
                         </td>
@@ -1413,6 +1438,8 @@ require_once 'includes/header.php';
             <input type="hidden" name="user_id" id="ded_user_id">
             <input type="hidden" name="location_id" value="<?= htmlspecialchars($filter_location_id) ?>">
             <input type="hidden" name="period_month" id="ded_period_month">
+            <input type="hidden" name="period_start" id="ded_period_start">
+            <input type="hidden" name="period_end" id="ded_period_end">
 
             <div class="modal-body">
                 <div class="form-group">
@@ -1510,17 +1537,34 @@ function closeConversionModal() {
     document.getElementById('conversionModal').classList.remove('active');
 }
 
-function openDeductionModal(userId, coachName, amount, reason, periodMonth) {
+function openDeductionModal(userId, coachName, amount, reason, periodStart, periodEnd) {
     document.getElementById('ded_user_id').value = userId;
     document.getElementById('ded_coach_name').value = coachName;
     document.getElementById('ded_amount').value = amount > 0 ? amount.toFixed(2) : '0.00';
     document.getElementById('ded_reason').value = reason;
+
+    // Set period dates
+    document.getElementById('ded_period_start').value = periodStart;
+    document.getElementById('ded_period_end').value = periodEnd;
+
+    // For monthly view, set period_month; for weekly/biweekly, use first day of month from start date
+    const periodMonth = periodStart.substring(0, 7) + '-01'; // YYYY-MM-01
     document.getElementById('ded_period_month').value = periodMonth;
 
-    // Format the period month for display
-    const date = new Date(periodMonth);
-    const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    document.getElementById('ded_period_display').value = monthName;
+    // Format the period for display
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+
+    // Check if it's a full month (monthly view) or a week/biweek
+    const isMonthly = periodStart.endsWith('-01') && (endDate.getDate() >= 28);
+
+    if (isMonthly) {
+        const monthName = startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        document.getElementById('ded_period_display').value = monthName;
+    } else {
+        const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        document.getElementById('ded_period_display').value = formatDate(startDate) + ' - ' + formatDate(endDate);
+    }
 
     document.getElementById('deductionModal').classList.add('active');
 }
@@ -1695,23 +1739,65 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        const startPicker = flatpickr(startInput, {
-            ...fpConfig,
-            onChange: function(selectedDates) {
-                if (selectedDates[0]) {
-                    endPicker.set('minDate', selectedDates[0]);
-                }
-            }
-        });
+        // For weekly tab, use week mode to select full weeks only
+        if (currentTab === 'weekly') {
+            const startPicker = flatpickr(startInput, {
+                ...fpConfig,
+                onChange: function(selectedDates) {
+                    if (selectedDates[0]) {
+                        // Calculate Sunday (start of week) and Saturday (end of week)
+                        const selected = new Date(selectedDates[0]);
+                        const dayOfWeek = selected.getDay();
+                        const sunday = new Date(selected);
+                        sunday.setDate(selected.getDate() - dayOfWeek);
+                        const saturday = new Date(sunday);
+                        saturday.setDate(sunday.getDate() + 6);
 
-        const endPicker = flatpickr(endInput, {
-            ...fpConfig,
-            onChange: function(selectedDates) {
-                if (selectedDates[0]) {
-                    startPicker.set('maxDate', selectedDates[0]);
+                        // Set both dates to the full week
+                        startPicker.setDate(sunday, false);
+                        endPicker.setDate(saturday, true);
+                    }
                 }
-            }
-        });
+            });
+
+            const endPicker = flatpickr(endInput, {
+                ...fpConfig,
+                onChange: function(selectedDates) {
+                    if (selectedDates[0]) {
+                        // Calculate Sunday (start of week) and Saturday (end of week)
+                        const selected = new Date(selectedDates[0]);
+                        const dayOfWeek = selected.getDay();
+                        const sunday = new Date(selected);
+                        sunday.setDate(selected.getDate() - dayOfWeek);
+                        const saturday = new Date(sunday);
+                        saturday.setDate(sunday.getDate() + 6);
+
+                        // Set both dates to the full week
+                        startPicker.setDate(sunday, true);
+                        endPicker.setDate(saturday, false);
+                    }
+                }
+            });
+        } else {
+            // Regular mode for biweekly/history tabs
+            const startPicker = flatpickr(startInput, {
+                ...fpConfig,
+                onChange: function(selectedDates) {
+                    if (selectedDates[0]) {
+                        endPicker.set('minDate', selectedDates[0]);
+                    }
+                }
+            });
+
+            const endPicker = flatpickr(endInput, {
+                ...fpConfig,
+                onChange: function(selectedDates) {
+                    if (selectedDates[0]) {
+                        startPicker.set('maxDate', selectedDates[0]);
+                    }
+                }
+            });
+        }
     }
 
     // Payment date picker (simple, no presets)
