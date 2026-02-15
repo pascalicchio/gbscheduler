@@ -1512,25 +1512,27 @@ function openDeductionModal(userId, coachName, amount, reason, periodStart, peri
     document.getElementById('ded_amount').value = amount > 0 ? amount.toFixed(2) : '0.00';
     document.getElementById('ded_reason').value = reason;
 
-    // Set period dates
-    document.getElementById('ded_period_start').value = periodStart;
-    document.getElementById('ded_period_end').value = periodEnd;
-
-    // For monthly view, set period_month; for weekly/biweekly, use first day of month from start date
-    const periodMonth = periodStart.substring(0, 7) + '-01'; // YYYY-MM-01
-    document.getElementById('ded_period_month').value = periodMonth;
-
-    // Format the period for display
-    const startDate = new Date(periodStart);
-    const endDate = new Date(periodEnd);
-
     // Check if it's a full month (monthly view) or a week/biweek
+    const startDate = new Date(periodStart + 'T00:00:00');
+    const endDate = new Date(periodEnd + 'T00:00:00');
     const isMonthly = periodStart.endsWith('-01') && (endDate.getDate() >= 28);
 
     if (isMonthly) {
+        // Monthly view: Only set period_month, leave period_start/end empty
+        const periodMonth = periodStart; // Already in YYYY-MM-01 format
+        document.getElementById('ded_period_month').value = periodMonth;
+        document.getElementById('ded_period_start').value = '';
+        document.getElementById('ded_period_end').value = '';
+
         const monthName = startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         document.getElementById('ded_period_display').value = monthName;
     } else {
+        // Weekly/Biweekly: Set period_start/end, and period_month from start date
+        document.getElementById('ded_period_start').value = periodStart;
+        document.getElementById('ded_period_end').value = periodEnd;
+        const periodMonth = periodStart.substring(0, 7) + '-01'; // YYYY-MM-01
+        document.getElementById('ded_period_month').value = periodMonth;
+
         const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         document.getElementById('ded_period_display').value = formatDate(startDate) + ' - ' + formatDate(endDate);
     }
