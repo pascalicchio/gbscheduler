@@ -1225,8 +1225,8 @@ require_once 'includes/header.php';
                     $total_paid = isset($paid_records[$uid]) ? $paid_records[$uid]['total_paid'] : 0;
                     $balance_due = $data['total_pay'] - $total_paid;
                     
-                    // Skip if no activity at all
-                    if ($data['total_pay'] == 0 && $total_paid == 0) continue;
+                    // Skip if no activity at all (but always show if classes were recorded)
+                    if ($data['total_pay'] == 0 && $total_paid == 0 && $data['class_count'] == 0) continue;
                     
                     $is_paid = $total_paid > 0;
                     $is_fully_paid = $balance_due < 0.01; // Fully paid (accounting for floating point)
