@@ -594,6 +594,150 @@ $extraCss = <<<CSS
     .rank-3 { background: #cd7f32; color: white; }
     .rank-default { background: #e9ecef; color: #666; }
 
+    /* View Toggle */
+    .view-toggle {
+        display: flex;
+        gap: 0;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        align-self: flex-end;
+    }
+
+    .view-toggle-btn {
+        padding: 10px 16px;
+        background: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #6c757d;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn:hover {
+        background: #f8fafb;
+        color: #2c3e50;
+    }
+
+    .view-toggle-btn.active {
+        background: linear-gradient(135deg, #1a202c, #2d3748);
+        color: white;
+    }
+
+    /* Buying View Cards */
+    .buying-summary-banner {
+        padding: 10px 16px;
+        background: linear-gradient(135deg, rgba(220,53,69,0.08), rgba(240,173,78,0.08));
+        border: 1px solid rgba(220,53,69,0.2);
+        border-radius: 10px;
+        margin-bottom: 16px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #2c3e50;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .buying-summary-banner .stat-critical { color: #dc3545; }
+    .buying-summary-banner .stat-low { color: #b8860b; }
+
+    .buying-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .buying-card {
+        background: white;
+        border: 1px solid #e8ecf2;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+
+    .buying-card-header {
+        background: linear-gradient(135deg, #1a202c, #2d3748);
+        color: white;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .buying-card-header .alert-badge {
+        background: #dc3545;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+
+    .buying-card-body {
+        padding: 12px;
+        overflow-x: auto;
+    }
+
+    .buying-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .buying-matrix th {
+        background: #f8fafb;
+        color: #6c757d;
+        padding: 6px 10px;
+        text-align: center;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-bottom: 1px solid #e8ecf2;
+    }
+
+    .buying-matrix th.size-col {
+        text-align: left;
+        color: #2c3e50;
+    }
+
+    .buying-matrix td {
+        padding: 5px 10px;
+        text-align: center;
+        border-bottom: 1px solid #f5f5f5;
+        font-weight: 600;
+    }
+
+    .buying-matrix td.size-label {
+        text-align: left;
+        font-weight: 700;
+        color: #2c3e50;
+        white-space: nowrap;
+    }
+
+    .qty-cell.qty-zero {
+        background: rgba(220,53,69,0.15);
+        color: #dc3545;
+        font-weight: 700;
+    }
+
+    .qty-cell.qty-low {
+        background: rgba(240,173,78,0.15);
+        color: #b8860b;
+        font-weight: 700;
+    }
+
+    .qty-cell.no-product {
+        color: #dee2e6;
+    }
+
     @media (max-width: 768px) {
         .tabs {
             gap: 8px;
@@ -689,26 +833,37 @@ require_once 'includes/header.php';
         <button class="btn-gradient" onclick="loadInventory()">
             <i class="fas fa-sync"></i> Load
         </button>
+        <div class="view-toggle">
+            <button class="view-toggle-btn active" data-mode="table" onclick="setViewMode('table')">
+                <i class="fas fa-table"></i> Table
+            </button>
+            <button class="view-toggle-btn" data-mode="cards" onclick="setViewMode('cards')">
+                <i class="fas fa-th-large"></i> Buying View
+            </button>
+        </div>
         <span class="last-count-badge" id="last-count-badge">
             <i class="fas fa-clock"></i> Last count: <span class="last-date" id="last-count-date">—</span>
         </span>
     </div>
 
     <div id="inventory-container">
-        <table class="inventory-table">
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th>Size / Color</th>
-                    <th>Last Week</th>
-                    <th>Current Count</th>
-                    <th>Change</th>
-                </tr>
-            </thead>
-            <tbody id="inventory-body">
-                <tr><td colspan="5" class="text-center text-gray-400 py-10">Select a location and date, then click Load</td></tr>
-            </tbody>
-        </table>
+        <div id="inventory-table-wrapper">
+            <table class="inventory-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Size / Color</th>
+                        <th>Last Week</th>
+                        <th>Current Count</th>
+                        <th>Change</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-body">
+                    <tr><td colspan="5" class="text-center text-gray-400 py-10">Select a location and date, then click Load</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="inventory-cards-wrapper" style="display:none;"></div>
     </div>
 
     <div class="save-bar">
@@ -1017,6 +1172,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 let hasUnsavedChanges = false;
+let currentInventoryData = [];
+let lastApiResponse = null;
+let viewMode = 'table';
 
 function formatLastDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -1059,7 +1217,22 @@ function loadInventory() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                renderInventoryTable(data.products, data.counts, data.prev_counts);
+                lastApiResponse = { products: data.products, counts: data.counts, prevCounts: data.prev_counts };
+                currentInventoryData = data.products.map(p => ({
+                    product_id: p.id,
+                    category_name: p.category_name,
+                    size: p.size || '',
+                    color: p.color || '',
+                    variant_type: p.variant_type || 'standard',
+                    low_stock_threshold: p.low_stock_threshold || 8,
+                    current_qty: data.counts[p.id] ?? 0,
+                    previous_qty: data.prev_counts[p.id] ?? 0
+                }));
+                if (viewMode === 'cards') {
+                    renderInventoryCards(currentInventoryData);
+                } else {
+                    renderInventoryTable(data.products, data.counts, data.prev_counts);
+                }
             } else {
                 showNotification(data.message || 'Error loading inventory', 'error');
             }
@@ -1067,6 +1240,11 @@ function loadInventory() {
 }
 
 function renderInventoryTable(products, counts, prevCounts) {
+    const tableWrapper = document.getElementById('inventory-table-wrapper');
+    const cardsWrapper = document.getElementById('inventory-cards-wrapper');
+    if (tableWrapper) tableWrapper.style.display = '';
+    if (cardsWrapper) cardsWrapper.style.display = 'none';
+
     const tbody = document.getElementById('inventory-body');
     let html = '';
     let currentCategory = '';
@@ -1407,6 +1585,161 @@ function toggleProduct(productId, active) {
             showNotification(data.message || 'Error', 'error');
         }
     });
+}
+
+function setViewMode(mode) {
+    viewMode = mode;
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    document.querySelector('.save-bar').style.display = mode === 'cards' ? 'none' : 'flex';
+    if (!lastApiResponse) return;
+    if (mode === 'cards') {
+        renderInventoryCards(currentInventoryData);
+    } else {
+        renderInventoryTable(lastApiResponse.products, lastApiResponse.counts, lastApiResponse.prevCounts);
+    }
+}
+
+function compareSizes(a, b) {
+    const ORDER = ['Y0','Y1','Y2','Y3','Y4','Y5','Y6',
+                   'XS','S','M','L','XL','XXL','2XL',
+                   'A0','A1','A1L','A1H','A2','A2L','A2H','A3','A3H','A4','A5',
+                   'K0','K1','K2','K3'];
+    const ai = ORDER.indexOf(a.toUpperCase());
+    const bi = ORDER.indexOf(b.toUpperCase());
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+}
+
+function renderInventoryCards(items) {
+    const tableWrapper = document.getElementById('inventory-table-wrapper');
+    const cardsWrapper = document.getElementById('inventory-cards-wrapper');
+
+    tableWrapper.style.display = 'none';
+    cardsWrapper.style.display = 'block';
+
+    if (!items || items.length === 0) {
+        cardsWrapper.innerHTML = '<p style="color:#adb5bd;text-align:center;padding:40px;">No products found</p>';
+        return;
+    }
+
+    // Count categories per name to detect multi-variant categories
+    const catVariantCounts = {};
+    items.forEach(item => {
+        const cat = item.category_name;
+        if (!catVariantCounts[cat]) catVariantCounts[cat] = new Set();
+        catVariantCounts[cat].add(item.variant_type);
+    });
+
+    // Group by category + variant_type
+    const groups = {};
+    items.forEach(item => {
+        const key = item.category_name + '|' + item.variant_type;
+        if (!groups[key]) {
+            groups[key] = {
+                category_name: item.category_name,
+                variant_type: item.variant_type,
+                items: []
+            };
+        }
+        groups[key].items.push(item);
+    });
+
+    // Collect all sizes and colors per group, count alerts
+    let totalCritical = 0;
+    let totalLow = 0;
+
+    const groupList = Object.values(groups).map(group => {
+        const sizes = [...new Set(group.items.map(i => i.size))].sort(compareSizes);
+        const colors = [...new Set(group.items.map(i => i.color))].sort((a, b) => a.localeCompare(b));
+
+        // Build lookup
+        const lookup = {};
+        group.items.forEach(item => {
+            lookup[item.size + '|' + item.color] = item;
+        });
+
+        let alerts = 0;
+        group.items.forEach(item => {
+            if (item.current_qty === 0) { alerts++; totalCritical++; }
+            else if (item.current_qty < item.low_stock_threshold) { alerts++; totalLow++; }
+        });
+
+        return { ...group, sizes, colors, lookup, alerts };
+    });
+
+    // Sort by urgency (most alerts first)
+    groupList.sort((a, b) => b.alerts - a.alerts);
+
+    // Summary banner
+    let summaryHtml = '';
+    if (totalCritical > 0 || totalLow > 0) {
+        summaryHtml = `<div class="buying-summary-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            ${totalCritical > 0 ? `<span class="stat-critical"><i class="fas fa-times-circle"></i> ${totalCritical} out of stock</span>` : ''}
+            ${totalLow > 0 ? `<span class="stat-low"><i class="fas fa-exclamation-circle"></i> ${totalLow} low stock</span>` : ''}
+        </div>`;
+    }
+
+    // Build cards
+    let cardsHtml = '<div class="buying-cards-grid">';
+
+    groupList.forEach(group => {
+        const multiVariant = catVariantCounts[group.category_name].size > 1;
+        let title = escapeHtml(group.category_name);
+        if (multiVariant && group.variant_type && group.variant_type !== 'standard') {
+            const label = group.variant_type.charAt(0).toUpperCase() + group.variant_type.slice(1);
+            title += ` <span style="font-weight:400;opacity:0.75;font-size:0.85em">(${escapeHtml(label)})</span>`;
+        }
+
+        const alertBadge = group.alerts > 0
+            ? `<span class="alert-badge">${group.alerts} alert${group.alerts > 1 ? 's' : ''}</span>`
+            : '';
+
+        // Matrix header row
+        let matrixHtml = '<table class="buying-matrix"><thead><tr>';
+        matrixHtml += '<th class="size-col">Size</th>';
+        group.colors.forEach(color => {
+            matrixHtml += `<th>${escapeHtml(color || '—')}</th>`;
+        });
+        matrixHtml += '</tr></thead><tbody>';
+
+        // Matrix rows
+        group.sizes.forEach(size => {
+            matrixHtml += `<tr><td class="size-label">${escapeHtml(size || '—')}</td>`;
+            group.colors.forEach(color => {
+                const item = group.lookup[size + '|' + color];
+                if (!item) {
+                    matrixHtml += '<td class="qty-cell no-product">—</td>';
+                } else {
+                    let cellClass = 'qty-cell';
+                    if (item.current_qty === 0) cellClass += ' qty-zero';
+                    else if (item.current_qty < item.low_stock_threshold) cellClass += ' qty-low';
+                    matrixHtml += `<td class="${cellClass}">${item.current_qty}</td>`;
+                }
+            });
+            matrixHtml += '</tr>';
+        });
+
+        matrixHtml += '</tbody></table>';
+
+        cardsHtml += `
+            <div class="buying-card">
+                <div class="buying-card-header">
+                    <span>${title}</span>
+                    ${alertBadge}
+                </div>
+                <div class="buying-card-body">
+                    ${matrixHtml}
+                </div>
+            </div>`;
+    });
+
+    cardsHtml += '</div>';
+    cardsWrapper.innerHTML = summaryHtml + cardsHtml;
 }
 
 function escapeHtml(str) {
