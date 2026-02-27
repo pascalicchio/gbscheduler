@@ -32,8 +32,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 // Current filters
 $filter_location = $_GET['location_id'] ?? ($locations[0]['id'] ?? '');
 $filter_category = $_GET['category_id'] ?? '';
-$default_last_date = $last_counts[$filter_location] ?? date('Y-m-d');
-$filter_date = $_GET['count_date'] ?? $default_last_date;
+$filter_date = $_GET['count_date'] ?? date('Y-m-d');
 $active_tab = $_GET['tab'] ?? 'counts';
 
 // Page setup
@@ -1616,12 +1615,11 @@ function updateLastCountBadge() {
 }
 
 function onLocationChange() {
-    const locationId = document.getElementById('filter-location').value;
-    const lastDate = lastCounts[locationId] || new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
 
-    // Update date picker to last count date
+    // Keep date at today for a new count; don't revert to old last-count date
     const dateInput = document.getElementById('filter-date');
-    dateInput._flatpickr.setDate(lastDate, true);
+    dateInput._flatpickr.setDate(today, true);
 
     updateLastCountBadge();
     loadInventory();
