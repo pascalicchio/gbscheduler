@@ -927,6 +927,27 @@ $extraCss = <<<CSS
         max-width: 100%;
     }
 
+    /* Wide cards (many color columns) fill the full row and distribute evenly */
+    .buying-card.card-wide {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .buying-card.card-wide .buying-matrix {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .buying-card.card-wide .buying-matrix th,
+    .buying-card.card-wide .buying-matrix td {
+        min-width: unset;
+    }
+
+    .buying-card.card-wide .buying-matrix th.size-col,
+    .buying-card.card-wide .buying-matrix td.size-label {
+        width: 44px;
+    }
+
     .buying-card-header {
         background: linear-gradient(135deg, #1a202c, #2d3748);
         color: white;
@@ -2193,7 +2214,6 @@ function compareColors(a, b) {
         'blue',
         'purple',
         'brown',
-        'brown/black',
         'black',
         'navy',
         'red',
@@ -2366,8 +2386,9 @@ function renderInventoryCards(items) {
 
         matrixHtml += '</tbody></table>';
 
+        const wideClass = group.colors.length > 6 ? ' card-wide' : '';
         cardsHtml += `
-            <div class="buying-card">
+            <div class="buying-card${wideClass}">
                 <div class="buying-card-header">
                     <span>${title}</span>
                     ${alertBadge}
