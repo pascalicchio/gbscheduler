@@ -2166,10 +2166,41 @@ function setViewMode(mode) {
 function compareSizes(a, b) {
     const ORDER = ['Y0','Y1','Y2','Y3','Y4','Y5','Y6',
                    'XS','S','M','L','XL','XXL','2XL',
-                   'A0','A1','A1L','A1H','A2','A2L','A2H','A3','A3H','A4','A5',
-                   'K0','K1','K2','K3'];
+                   'A0','A1','A1L','A1H','A2','A2L','A2H','A3','A3H','A4','A5','A6'];
     const ai = ORDER.indexOf(a.toUpperCase());
     const bi = ORDER.indexOf(b.toUpperCase());
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+}
+
+function compareColors(a, b) {
+    const ORDER = [
+        'white',
+        'gray and white','grey and white',
+        'gray','grey',
+        'gray and black','grey and black',
+        'yellow and white',
+        'yellow',
+        'yellow and black',
+        'orange and white',
+        'orange',
+        'orange and black',
+        'green and white',
+        'green',
+        'green and black',
+        'blue',
+        'purple',
+        'brown',
+        'brown and black',
+        'black',
+        'navy',
+        'red',
+        'pink'
+    ];
+    const ai = ORDER.indexOf(a.toLowerCase());
+    const bi = ORDER.indexOf(b.toLowerCase());
     if (ai !== -1 && bi !== -1) return ai - bi;
     if (ai !== -1) return -1;
     if (bi !== -1) return 1;
@@ -2255,7 +2286,7 @@ function renderInventoryCards(items) {
 
     const groupList = Object.values(groups).map(group => {
         const sizes = [...new Set(group.items.map(i => i.size))].sort(compareSizes);
-        const colors = [...new Set(group.items.map(i => i.color))].sort((a, b) => a.localeCompare(b));
+        const colors = [...new Set(group.items.map(i => i.color))].sort(compareColors);
         const lookup = {};
         group.items.forEach(item => { lookup[item.size + '|' + item.color] = item; });
 
