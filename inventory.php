@@ -944,7 +944,6 @@ $extraCss = <<<CSS
 
     .buying-card-body {
         padding: 12px;
-        overflow-x: auto;
     }
 
     .buying-matrix {
@@ -1008,9 +1007,9 @@ $extraCss = <<<CSS
     }
 
     .card-qty-input {
-        width: 64px;
-        min-width: 64px;
-        padding: 4px 6px;
+        width: 50px !important;
+        min-width: 50px !important;
+        padding: 2px !important;
         border: 1.5px solid #e2e8f0;
         border-radius: 6px;
         text-align: center;
