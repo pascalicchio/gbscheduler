@@ -962,18 +962,21 @@ $extraCss = <<<CSS
         text-transform: uppercase;
         letter-spacing: 0.03em;
         border-bottom: 1px solid #e8ecf2;
+        min-width: 80px;
     }
 
     .buying-matrix th.size-col {
         text-align: left;
         color: #2c3e50;
+        min-width: auto;
     }
 
     .buying-matrix td {
-        padding: 5px 10px;
+        padding: 5px 8px;
         text-align: center;
         border-bottom: 1px solid #f5f5f5;
         font-weight: 600;
+        min-width: 80px;
     }
 
     .buying-matrix td.size-label {
@@ -1005,7 +1008,8 @@ $extraCss = <<<CSS
     }
 
     .card-qty-input {
-        width: 54px;
+        width: 64px;
+        min-width: 64px;
         padding: 4px 6px;
         border: 1.5px solid #e2e8f0;
         border-radius: 6px;
@@ -2314,6 +2318,7 @@ function renderInventoryCards(items) {
                                value="${item.current_qty}" min="0"
                                data-product-id="${item.product_id}"
                                data-original="${item.current_qty}"
+                               onfocus="this.select()"
                                onchange="markUnsaved(); updateCardCellStyle(this)">
                         <button class="cell-check-btn${isChecked ? ' checked' : ''}"
                                 onclick="toggleCheck(${item.product_id}, this)"
