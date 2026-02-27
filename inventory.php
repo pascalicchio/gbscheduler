@@ -668,40 +668,191 @@ $extraCss = <<<CSS
         color: white;
     }
 
-    /* Inline note input in orders table */
-    .note-input {
-        width: 100%;
-        min-width: 120px;
-        padding: 4px 8px;
-        border: 1.5px solid transparent;
-        border-radius: 6px;
+    /* Note cell in orders table */
+    .note-cell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .note-preview {
+        font-size: 0.82rem;
+        color: #6c757d;
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .note-count-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: rgba(0,201,255,0.12);
+        color: rgb(0, 160, 200);
+        border-radius: 10px;
+        padding: 1px 6px;
+        white-space: nowrap;
+    }
+
+    .btn-add-note {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #e2e8f0;
+        background: white;
+        color: #6c757d;
+        cursor: pointer;
         font-size: 0.85rem;
-        font-family: inherit;
-        color: #2c3e50;
-        background: transparent;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s ease;
-        box-sizing: border-box;
+        flex-shrink: 0;
+        line-height: 1;
     }
 
-    .note-input::placeholder {
-        color: #ced4da;
-        font-style: italic;
+    .btn-add-note:hover {
+        border-color: rgb(0, 201, 255);
+        color: rgb(0, 201, 255);
+        background: rgba(0,201,255,0.06);
     }
 
-    .note-input:hover {
-        border-color: #e2e8f0;
+    /* Note Modal */
+    .note-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .note-modal-overlay.open {
+        display: flex;
+    }
+
+    .note-modal {
+        background: white;
+        border-radius: 14px;
+        width: 480px;
+        max-width: 95vw;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .note-modal-header {
+        background: linear-gradient(135deg, #1a202c, #2d3748);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .note-modal-header h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .note-modal-header .modal-subtitle {
+        font-size: 0.8rem;
+        opacity: 0.65;
+        margin-top: 2px;
+    }
+
+    .note-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        opacity: 0.7;
+        padding: 4px;
+        line-height: 1;
+    }
+
+    .note-modal-close:hover { opacity: 1; }
+
+    .note-modal-log {
+        padding: 16px 20px;
+        max-height: 280px;
+        overflow-y: auto;
+        border-bottom: 1px solid #e8ecf2;
         background: #f8fafb;
     }
 
-    .note-input:focus {
-        outline: none;
-        border-color: rgb(0, 201, 255);
-        background: white;
-        box-shadow: 0 0 0 3px rgba(0, 201, 255, 0.1);
+    .note-log-empty {
+        color: #adb5bd;
+        font-style: italic;
+        font-size: 0.875rem;
+        text-align: center;
+        margin: 20px 0;
     }
 
-    .note-input.saving {
-        opacity: 0.5;
+    .note-log-entry {
+        margin-bottom: 10px;
+        line-height: 1.4;
+    }
+
+    .note-log-entry:last-child { margin-bottom: 0; }
+
+    .note-log-ts {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: rgb(0, 160, 200);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .note-log-text {
+        font-size: 0.88rem;
+        color: #2c3e50;
+    }
+
+    .note-log-legacy {
+        font-size: 0.88rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+
+    .note-modal-footer {
+        padding: 16px 20px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .note-modal-footer textarea {
+        flex: 1;
+        padding: 10px 12px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        resize: none;
+        rows: 2;
+        transition: border-color 0.2s;
+    }
+
+    .note-modal-footer textarea:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 3px rgba(0,201,255,0.1);
+    }
+
+    .note-modal-footer .btn-save-note {
+        padding: 10px 18px;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        align-self: flex-end;
     }
 
     /* View Toggle */
@@ -1641,12 +1792,10 @@ function renderOrdersTable() {
                     </select>
                 </td>
                 <td>
-                    <input type="text" class="note-input" value="${escapeHtml(order.notes || '')}"
-                           placeholder="Add note..."
-                           data-order-id="${order.id}"
-                           data-original="${escapeHtml(order.notes || '')}"
-                           onblur="saveOrderNote(this)"
-                           onkeydown="handleNoteKey(event, this)">
+                    <div class="note-cell">
+                        ${buildNotePreview(order.notes)}
+                        <button class="btn-add-note" onclick="openNoteModal(${order.id})" title="Add note">+</button>
+                    </div>
                 </td>
                 <td>
                     <button class="btn-icon danger" onclick="deleteOrder(${order.id})"><i class="fas fa-trash"></i></button>
@@ -1694,45 +1843,94 @@ function updateOrderStatus(select) {
     });
 }
 
-function handleNoteKey(e, input) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        input.blur();
-    } else if (e.key === 'Escape') {
-        input.value = input.dataset.original;
-        input.blur();
-    }
+let noteModalOrderId = null;
+
+function buildNotePreview(notes) {
+    if (!notes || !notes.trim()) return '';
+    const lines = notes.split('\n').filter(l => l.trim());
+    const count = lines.length;
+    const last = lines[lines.length - 1].replace(/^\[[^\]]+\]\s*/, '');
+    const preview = last.length > 32 ? last.substring(0, 32) + '…' : last;
+    return `<span class="note-preview" title="${escapeHtml(notes)}">${escapeHtml(preview)}</span>`
+         + (count > 1 ? `<span class="note-count-badge">${count}</span>` : '');
 }
 
-function saveOrderNote(input) {
-    const note = input.value.trim();
-    if (note === input.dataset.original) return; // no change
+function openNoteModal(orderId) {
+    noteModalOrderId = orderId;
+    const order = allOrders.find(o => o.id == orderId);
+    if (!order) return;
 
-    const orderId = input.dataset.orderId;
-    input.classList.add('saving');
+    const productName = order.product_name || order.product_description || 'Custom Item';
+    const sizeColor = [order.size_requested, order.color_requested].filter(x => x).join(' / ');
+    document.getElementById('note-modal-product').textContent = productName + (sizeColor ? ' — ' + sizeColor : '');
+
+    renderNoteLog(order.notes || '');
+    document.getElementById('note-modal-input').value = '';
+    document.getElementById('note-modal-overlay').classList.add('open');
+    document.getElementById('note-modal-input').focus();
+}
+
+function renderNoteLog(notes) {
+    const logEl = document.getElementById('note-modal-log');
+    if (!notes.trim()) {
+        logEl.innerHTML = '<p class="note-log-empty">No notes yet — add the first one below.</p>';
+        return;
+    }
+    const lines = notes.split('\n').filter(l => l.trim());
+    logEl.innerHTML = lines.map(line => {
+        const match = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+        if (match) {
+            return `<div class="note-log-entry">
+                <span class="note-log-ts">${escapeHtml(match[1])}</span>
+                <span class="note-log-text">${escapeHtml(match[2])}</span>
+            </div>`;
+        }
+        return `<div class="note-log-entry"><span class="note-log-legacy">${escapeHtml(line)}</span></div>`;
+    }).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function closeNoteModal() {
+    document.getElementById('note-modal-overlay').classList.remove('open');
+    noteModalOrderId = null;
+}
+
+function saveNoteEntry() {
+    const text = document.getElementById('note-modal-input').value.trim();
+    if (!text) return;
+
+    const order = allOrders.find(o => o.id == noteModalOrderId);
+    if (!order) return;
+
+    const now = new Date();
+    const ts = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' '
+             + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const newEntry = `[${ts}] ${text}`;
+    const newNotes = order.notes ? order.notes + '\n' + newEntry : newEntry;
+
+    const saveBtn = document.getElementById('note-modal-save');
+    saveBtn.disabled = true;
 
     const formData = new FormData();
     formData.append('action', 'update_note');
-    formData.append('order_id', orderId);
-    formData.append('note', note);
+    formData.append('order_id', noteModalOrderId);
+    formData.append('note', newNotes);
 
     fetch('api/order_request_update.php', { method: 'POST', body: formData })
         .then(res => res.json())
         .then(data => {
-            input.classList.remove('saving');
+            saveBtn.disabled = false;
             if (data.success) {
-                input.dataset.original = note;
-                // update in-memory so filter/re-render keeps the new note
-                const order = allOrders.find(o => o.id == orderId);
-                if (order) order.notes = note || null;
+                order.notes = newNotes;
+                document.getElementById('note-modal-input').value = '';
+                renderNoteLog(newNotes);
+                renderOrdersTable();
             } else {
-                input.value = input.dataset.original;
                 showNotification(data.message || 'Error saving note', 'error');
             }
         })
         .catch(() => {
-            input.classList.remove('saving');
-            input.value = input.dataset.original;
+            saveBtn.disabled = false;
             showNotification('Error saving note', 'error');
         });
 }
@@ -2023,6 +2221,16 @@ function showNotification(message, type) {
     setTimeout(() => alertDiv.remove(), 3000);
 }
 
+// Close modal on overlay click
+document.getElementById('note-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeNoteModal();
+});
+
+// Save note on Ctrl+Enter inside textarea
+document.getElementById('note-modal-input').addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') saveNoteEntry();
+});
+
 // Warn before leaving with unsaved changes
 window.addEventListener('beforeunload', function(e) {
     if (hasUnsavedChanges) {
@@ -2031,5 +2239,27 @@ window.addEventListener('beforeunload', function(e) {
     }
 });
 </script>
+
+<!-- Note Log Modal -->
+<div class="note-modal-overlay" id="note-modal-overlay">
+    <div class="note-modal">
+        <div class="note-modal-header">
+            <div>
+                <h4><i class="fas fa-sticky-note"></i> Order Notes</h4>
+                <div class="modal-subtitle" id="note-modal-product"></div>
+            </div>
+            <button class="note-modal-close" onclick="closeNoteModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="note-modal-log" id="note-modal-log">
+            <p class="note-log-empty">No notes yet.</p>
+        </div>
+        <div class="note-modal-footer">
+            <textarea id="note-modal-input" rows="2" placeholder="Add a note… (Ctrl+Enter to save)"></textarea>
+            <button id="note-modal-save" class="btn-gradient btn-save-note" onclick="saveNoteEntry()">
+                <i class="fas fa-plus"></i> Add
+            </button>
+        </div>
+    </div>
+</div>
 
 <?php require_once 'includes/footer.php'; ?>
