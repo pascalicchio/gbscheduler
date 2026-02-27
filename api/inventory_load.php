@@ -152,20 +152,14 @@ try {
             break;
 
         case 'orders':
-            $sql = "SELECT o.*, p.name as product_name, l.name as location_name
+            $sql = "SELECT o.*, p.name as product_name, p.size as product_size, p.color as product_color,
+                           l.name as location_name, c.sort_order as category_sort_order, c.name as category_name
                     FROM order_requests o
                     LEFT JOIN products p ON o.product_id = p.id
+                    LEFT JOIN product_categories c ON p.category_id = c.id
                     JOIN locations l ON o.location_id = l.id
                     WHERE o.is_active = 1
-                    ORDER BY
-                        CASE o.status
-                            WHEN 'pending' THEN 1
-                            WHEN 'ordered' THEN 2
-                            WHEN 'received' THEN 3
-                            WHEN 'completed' THEN 4
-                            WHEN 'cancelled' THEN 5
-                        END,
-                        o.created_at DESC";
+                    ORDER BY o.created_at DESC";
 
             $stmt = $pdo->query($sql);
             $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -594,6 +594,62 @@ $extraCss = <<<CSS
     .rank-3 { background: #cd7f32; color: white; }
     .rank-default { background: #e9ecef; color: #666; }
 
+    /* Order Filter Chips */
+    .order-filter-bar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .order-filter-chip {
+        padding: 6px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 20px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #6c757d;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .order-filter-chip:hover {
+        border-color: rgba(0,201,255,0.4);
+        color: #2c3e50;
+    }
+
+    .order-filter-chip.active {
+        background: linear-gradient(135deg, #1a202c, #2d3748);
+        color: white;
+        border-color: transparent;
+    }
+
+    .order-filter-chip .chip-count {
+        background: #e9ecef;
+        color: #495057;
+        border-radius: 10px;
+        padding: 1px 6px;
+        font-size: 0.75rem;
+    }
+
+    .order-filter-chip.active .chip-count {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+
+    .order-filter-divider {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        padding-top: 8px;
+        border-top: 1px solid #e8ecf2;
+    }
+
     /* View Toggle */
     .view-toggle {
         display: flex;
@@ -976,10 +1032,38 @@ require_once 'includes/header.php';
         </div>
 
         <div class="data-panel">
-            <h3><i class="fas fa-list"></i> Pending Requests</h3>
+            <h3><i class="fas fa-list"></i> Order Requests</h3>
+            <div class="order-filter-bar">
+                <button class="order-filter-chip active" data-status="all" onclick="filterOrders('all')">
+                    All <span class="chip-count" id="chip-count-all">0</span>
+                </button>
+                <button class="order-filter-chip" data-status="pending" onclick="filterOrders('pending')">
+                    Pending <span class="chip-count" id="chip-count-pending">0</span>
+                </button>
+                <button class="order-filter-chip" data-status="ordered" onclick="filterOrders('ordered')">
+                    Ordered <span class="chip-count" id="chip-count-ordered">0</span>
+                </button>
+                <button class="order-filter-chip" data-status="received" onclick="filterOrders('received')">
+                    Received <span class="chip-count" id="chip-count-received">0</span>
+                </button>
+                <button class="order-filter-chip" data-status="completed" onclick="filterOrders('completed')">
+                    Completed <span class="chip-count" id="chip-count-completed">0</span>
+                </button>
+                <button class="order-filter-chip" data-status="cancelled" onclick="filterOrders('cancelled')">
+                    Cancelled <span class="chip-count" id="chip-count-cancelled">0</span>
+                </button>
+                <div class="order-filter-divider">
+                    <?php foreach ($locations as $loc): ?>
+                    <button class="order-filter-chip" data-location="<?= $loc['id'] ?>" onclick="filterOrdersByLocation(<?= $loc['id'] ?>)">
+                        <i class="fas fa-map-marker-alt"></i> <?= e($loc['name']) ?> <span class="chip-count" id="chip-loc-<?= $loc['id'] ?>">0</span>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             <table class="inventory-table">
                 <thead>
                     <tr>
+                        <th>Location</th>
                         <th>Member</th>
                         <th>Product</th>
                         <th>Size/Color</th>
@@ -989,7 +1073,7 @@ require_once 'includes/header.php';
                     </tr>
                 </thead>
                 <tbody id="orders-body">
-                    <tr><td colspan="6" class="text-center text-gray-400 py-5">Loading...</td></tr>
+                    <tr><td colspan="7" class="text-center text-gray-400 py-5">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1390,26 +1474,103 @@ function renderTrendsTable(trends) {
     tbody.innerHTML = html;
 }
 
+let allOrders = [];
+let activeOrderFilter = 'all';
+let activeLocationFilter = null;
+const STATUS_ORDER = { pending: 1, ordered: 2, received: 3, completed: 4, cancelled: 5 };
+
 function loadOrders() {
     fetch('api/inventory_load.php?action=orders')
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                renderOrdersTable(data.orders, data.pending_count || 0);
+                allOrders = data.orders;
+                updateOrderFilterCounts();
+                filterOrders(activeOrderFilter);
+                updatePendingBadge(data.pending_count || 0);
             }
         });
 }
 
-function renderOrdersTable(orders, pendingCount) {
+function updateOrderFilterCounts() {
+    const locFiltered = activeLocationFilter
+        ? allOrders.filter(o => o.location_id == activeLocationFilter)
+        : allOrders;
+
+    const counts = { all: locFiltered.length };
+    ['pending', 'ordered', 'received', 'completed', 'cancelled'].forEach(s => {
+        counts[s] = locFiltered.filter(o => o.status === s).length;
+    });
+    Object.entries(counts).forEach(([status, count]) => {
+        const el = document.getElementById('chip-count-' + status);
+        if (el) el.textContent = count;
+    });
+
+    // Location counts (unaffected by location filter)
+    document.querySelectorAll('[data-location]').forEach(btn => {
+        const locId = btn.dataset.location;
+        const locCount = allOrders.filter(o => o.location_id == locId).length;
+        const el = document.getElementById('chip-loc-' + locId);
+        if (el) el.textContent = locCount;
+    });
+}
+
+function filterOrders(status) {
+    activeOrderFilter = status;
+    document.querySelectorAll('.order-filter-chip[data-status]').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.status === status);
+    });
+    renderOrdersTable();
+}
+
+function filterOrdersByLocation(locationId) {
+    activeLocationFilter = activeLocationFilter == locationId ? null : locationId;
+    document.querySelectorAll('.order-filter-chip[data-location]').forEach(chip => {
+        chip.classList.toggle('active', activeLocationFilter != null && chip.dataset.location == activeLocationFilter);
+    });
+    updateOrderFilterCounts();
+    renderOrdersTable();
+}
+
+function renderOrdersTable() {
+    let filtered = allOrders;
+    if (activeLocationFilter) filtered = filtered.filter(o => o.location_id == activeLocationFilter);
+    if (activeOrderFilter !== 'all') filtered = filtered.filter(o => o.status === activeOrderFilter);
+
+    // Sort: status priority → category sort_order → product name → size → color
+    const sorted = [...filtered].sort((a, b) => {
+        const sa = STATUS_ORDER[a.status] || 99;
+        const sb = STATUS_ORDER[b.status] || 99;
+        if (sa !== sb) return sa - sb;
+
+        const ca = a.category_sort_order ?? 999;
+        const cb = b.category_sort_order ?? 999;
+        if (ca !== cb) return ca - cb;
+
+        const na = (a.product_name || a.product_description || '').toLowerCase();
+        const nb = (b.product_name || b.product_description || '').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
+
+        const sizeA = a.product_size || a.size_requested || '';
+        const sizeB = b.product_size || b.size_requested || '';
+        const sizeCmp = compareSizes(sizeA, sizeB);
+        if (sizeCmp !== 0) return sizeCmp;
+
+        const colorA = (a.product_color || a.color_requested || '').toLowerCase();
+        const colorB = (b.product_color || b.color_requested || '').toLowerCase();
+        return colorA.localeCompare(colorB);
+    });
+
     const tbody = document.getElementById('orders-body');
     let html = '';
 
-    orders.forEach(order => {
+    sorted.forEach(order => {
         const productName = order.product_name || order.product_description || 'Custom Item';
         const sizeColor = [order.size_requested, order.color_requested].filter(x => x).join(' / ') || '-';
 
         html += `
             <tr data-order-id="${order.id}">
+                <td><strong>${escapeHtml(order.location_name)}</strong></td>
                 <td>${escapeHtml(order.member_name)}</td>
                 <td>${escapeHtml(productName)}</td>
                 <td>${escapeHtml(sizeColor)}</td>
@@ -1431,14 +1592,11 @@ function renderOrdersTable(orders, pendingCount) {
         `;
     });
 
-    if (orders.length === 0) {
-        html = '<tr><td colspan="6" class="text-center text-gray-400 py-5">No order requests</td></tr>';
+    if (sorted.length === 0) {
+        html = '<tr><td colspan="7" class="text-center text-gray-400 py-5">No order requests</td></tr>';
     }
 
     tbody.innerHTML = html;
-
-    // Update pending badge
-    updatePendingBadge(pendingCount);
 }
 
 function updatePendingBadge(count) {
