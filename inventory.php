@@ -668,6 +668,42 @@ $extraCss = <<<CSS
         color: white;
     }
 
+    /* Inline note input in orders table */
+    .note-input {
+        width: 100%;
+        min-width: 120px;
+        padding: 4px 8px;
+        border: 1.5px solid transparent;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-family: inherit;
+        color: #2c3e50;
+        background: transparent;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .note-input::placeholder {
+        color: #ced4da;
+        font-style: italic;
+    }
+
+    .note-input:hover {
+        border-color: #e2e8f0;
+        background: #f8fafb;
+    }
+
+    .note-input:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(0, 201, 255, 0.1);
+    }
+
+    .note-input.saving {
+        opacity: 0.5;
+    }
+
     /* View Toggle */
     .view-toggle {
         display: flex;
@@ -1088,11 +1124,12 @@ require_once 'includes/header.php';
                         <th>Size/Color</th>
                         <th>Qty</th>
                         <th>Status</th>
+                        <th>Notes</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="orders-body">
-                    <tr><td colspan="7" class="text-center text-gray-400 py-5">Loading...</td></tr>
+                    <tr><td colspan="8" class="text-center text-gray-400 py-5">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1604,7 +1641,14 @@ function renderOrdersTable() {
                     </select>
                 </td>
                 <td>
-                    ${order.notes ? `<span title="${escapeHtml(order.notes)}" class="cursor-help"><i class="fas fa-sticky-note text-yellow-500"></i></span>` : ''}
+                    <input type="text" class="note-input" value="${escapeHtml(order.notes || '')}"
+                           placeholder="Add note..."
+                           data-order-id="${order.id}"
+                           data-original="${escapeHtml(order.notes || '')}"
+                           onblur="saveOrderNote(this)"
+                           onkeydown="handleNoteKey(event, this)">
+                </td>
+                <td>
                     <button class="btn-icon danger" onclick="deleteOrder(${order.id})"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
@@ -1612,7 +1656,7 @@ function renderOrdersTable() {
     });
 
     if (sorted.length === 0) {
-        html = '<tr><td colspan="7" class="text-center text-gray-400 py-5">No order requests</td></tr>';
+        html = '<tr><td colspan="8" class="text-center text-gray-400 py-5">No order requests</td></tr>';
     }
 
     tbody.innerHTML = html;
@@ -1648,6 +1692,49 @@ function updateOrderStatus(select) {
             showNotification(data.message || 'Error updating status', 'error');
         }
     });
+}
+
+function handleNoteKey(e, input) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+    } else if (e.key === 'Escape') {
+        input.value = input.dataset.original;
+        input.blur();
+    }
+}
+
+function saveOrderNote(input) {
+    const note = input.value.trim();
+    if (note === input.dataset.original) return; // no change
+
+    const orderId = input.dataset.orderId;
+    input.classList.add('saving');
+
+    const formData = new FormData();
+    formData.append('action', 'update_note');
+    formData.append('order_id', orderId);
+    formData.append('note', note);
+
+    fetch('api/order_request_update.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            input.classList.remove('saving');
+            if (data.success) {
+                input.dataset.original = note;
+                // update in-memory so filter/re-render keeps the new note
+                const order = allOrders.find(o => o.id == orderId);
+                if (order) order.notes = note || null;
+            } else {
+                input.value = input.dataset.original;
+                showNotification(data.message || 'Error saving note', 'error');
+            }
+        })
+        .catch(() => {
+            input.classList.remove('saving');
+            input.value = input.dataset.original;
+            showNotification('Error saving note', 'error');
+        });
 }
 
 function deleteOrder(orderId) {

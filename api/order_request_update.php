@@ -58,6 +58,21 @@ try {
             echo json_encode(['success' => true]);
             break;
 
+        case 'update_note':
+            $orderId = $_POST['order_id'] ?? '';
+            $note = trim($_POST['note'] ?? '') ?: null;
+
+            if (!$orderId) {
+                echo json_encode(['success' => false, 'message' => 'Order ID required']);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("UPDATE order_requests SET notes = ? WHERE id = ?");
+            $stmt->execute([$note, $orderId]);
+
+            echo json_encode(['success' => true]);
+            break;
+
         case 'delete':
             $orderId = $_POST['order_id'] ?? '';
 
