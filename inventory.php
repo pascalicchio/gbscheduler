@@ -595,26 +595,50 @@ $extraCss = <<<CSS
     .rank-default { background: #e9ecef; color: #666; }
 
     /* Order Filter Chips */
-    .order-filter-bar {
+    .order-panel-header {
         display: flex;
-        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
         flex-wrap: wrap;
+        gap: 10px;
         margin-bottom: 16px;
     }
 
+    .order-panel-header h3 {
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .order-filter-bar {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .order-filter-sep {
+        width: 1px;
+        height: 20px;
+        background: #e2e8f0;
+        flex-shrink: 0;
+    }
+
     .order-filter-chip {
-        padding: 6px 14px;
+        padding: 5px 12px;
+        height: 32px;
+        box-sizing: border-box;
         border: 2px solid #e2e8f0;
         border-radius: 20px;
         background: white;
         cursor: pointer;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 600;
         color: #6c757d;
         transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
+        white-space: nowrap;
     }
 
     .order-filter-chip:hover {
@@ -632,22 +656,16 @@ $extraCss = <<<CSS
         background: #e9ecef;
         color: #495057;
         border-radius: 10px;
-        padding: 1px 6px;
-        font-size: 0.75rem;
+        padding: 0 5px;
+        font-size: 0.72rem;
+        line-height: 18px;
+        min-width: 18px;
+        text-align: center;
     }
 
     .order-filter-chip.active .chip-count {
         background: rgba(255,255,255,0.2);
         color: white;
-    }
-
-    .order-filter-divider {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-        padding-top: 8px;
-        border-top: 1px solid #e8ecf2;
     }
 
     /* View Toggle */
@@ -1032,27 +1050,28 @@ require_once 'includes/header.php';
         </div>
 
         <div class="data-panel">
-            <h3><i class="fas fa-list"></i> Order Requests</h3>
-            <div class="order-filter-bar">
-                <button class="order-filter-chip active" data-status="all" onclick="filterOrders('all')">
-                    All <span class="chip-count" id="chip-count-all">0</span>
-                </button>
-                <button class="order-filter-chip" data-status="pending" onclick="filterOrders('pending')">
-                    Pending <span class="chip-count" id="chip-count-pending">0</span>
-                </button>
-                <button class="order-filter-chip" data-status="ordered" onclick="filterOrders('ordered')">
-                    Ordered <span class="chip-count" id="chip-count-ordered">0</span>
-                </button>
-                <button class="order-filter-chip" data-status="received" onclick="filterOrders('received')">
-                    Received <span class="chip-count" id="chip-count-received">0</span>
-                </button>
-                <button class="order-filter-chip" data-status="completed" onclick="filterOrders('completed')">
-                    Completed <span class="chip-count" id="chip-count-completed">0</span>
-                </button>
-                <button class="order-filter-chip" data-status="cancelled" onclick="filterOrders('cancelled')">
-                    Cancelled <span class="chip-count" id="chip-count-cancelled">0</span>
-                </button>
-                <div class="order-filter-divider">
+            <div class="order-panel-header">
+                <h3><i class="fas fa-list"></i> Order Requests</h3>
+                <div class="order-filter-bar">
+                    <button class="order-filter-chip active" data-status="all" onclick="filterOrders('all')">
+                        All <span class="chip-count" id="chip-count-all">0</span>
+                    </button>
+                    <button class="order-filter-chip" data-status="pending" onclick="filterOrders('pending')">
+                        Pending <span class="chip-count" id="chip-count-pending">0</span>
+                    </button>
+                    <button class="order-filter-chip" data-status="ordered" onclick="filterOrders('ordered')">
+                        Ordered <span class="chip-count" id="chip-count-ordered">0</span>
+                    </button>
+                    <button class="order-filter-chip" data-status="received" onclick="filterOrders('received')">
+                        Received <span class="chip-count" id="chip-count-received">0</span>
+                    </button>
+                    <button class="order-filter-chip" data-status="completed" onclick="filterOrders('completed')">
+                        Completed <span class="chip-count" id="chip-count-completed">0</span>
+                    </button>
+                    <button class="order-filter-chip" data-status="cancelled" onclick="filterOrders('cancelled')">
+                        Cancelled <span class="chip-count" id="chip-count-cancelled">0</span>
+                    </button>
+                    <span class="order-filter-sep"></span>
                     <?php foreach ($locations as $loc): ?>
                     <button class="order-filter-chip" data-location="<?= $loc['id'] ?>" onclick="filterOrdersByLocation(<?= $loc['id'] ?>)">
                         <i class="fas fa-map-marker-alt"></i> <?= e($loc['name']) ?> <span class="chip-count" id="chip-loc-<?= $loc['id'] ?>">0</span>
