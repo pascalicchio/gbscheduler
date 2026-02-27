@@ -999,6 +999,99 @@ $extraCss = <<<CSS
         color: #dee2e6;
     }
 
+    /* Card cell inputs & check-off */
+    .qty-cell {
+        position: relative;
+    }
+
+    .card-qty-input {
+        width: 54px;
+        padding: 4px 6px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 0.88rem;
+        font-weight: 600;
+        font-family: inherit;
+        background: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .card-qty-input:focus {
+        outline: none;
+        border-color: rgb(0, 201, 255);
+        box-shadow: 0 0 0 2px rgba(0, 201, 255, 0.12);
+    }
+
+    .qty-cell.qty-zero .card-qty-input {
+        border-color: rgba(220,53,69,0.4);
+        background: rgba(220,53,69,0.06);
+    }
+
+    .qty-cell.qty-low .card-qty-input {
+        border-color: rgba(240,173,78,0.4);
+        background: rgba(240,173,78,0.06);
+    }
+
+    .cell-check-btn {
+        position: absolute;
+        top: 2px;
+        right: 3px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 1.5px solid #dee2e6;
+        background: white;
+        color: transparent;
+        font-size: 0.55rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.15s ease;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .qty-cell:hover .cell-check-btn,
+    .cell-check-btn.checked {
+        opacity: 1;
+    }
+
+    .cell-check-btn.checked {
+        border-color: #28a745;
+        background: #28a745;
+        color: white;
+    }
+
+    .qty-cell.cell-checked {
+        opacity: 0.3;
+    }
+
+    .qty-cell.cell-checked .card-qty-input {
+        pointer-events: none;
+    }
+
+    .clear-checks-btn {
+        margin-left: auto;
+        background: none;
+        border: 1px solid rgba(220,53,69,0.35);
+        border-radius: 8px;
+        color: #dc3545;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .clear-checks-btn:hover {
+        background: rgba(220,53,69,0.08);
+    }
+
     @media (max-width: 768px) {
         .tabs {
             gap: 8px;
@@ -1095,11 +1188,11 @@ require_once 'includes/header.php';
             <i class="fas fa-sync"></i> Load
         </button>
         <div class="view-toggle">
-            <button class="view-toggle-btn active" data-mode="table" onclick="setViewMode('table')">
+            <button class="view-toggle-btn" data-mode="table" onclick="setViewMode('table')">
                 <i class="fas fa-table"></i> Table
             </button>
-            <button class="view-toggle-btn" data-mode="cards" onclick="setViewMode('cards')">
-                <i class="fas fa-th-large"></i> Buying View
+            <button class="view-toggle-btn active" data-mode="cards" onclick="setViewMode('cards')">
+                <i class="fas fa-th-large"></i> Card View
             </button>
         </div>
         <span class="last-count-badge" id="last-count-badge">
@@ -1465,7 +1558,7 @@ document.addEventListener('DOMContentLoaded', function() {
 let hasUnsavedChanges = false;
 let currentInventoryData = [];
 let lastApiResponse = null;
-let viewMode = 'table';
+let viewMode = 'cards';
 
 function formatLastDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -2054,7 +2147,6 @@ function setViewMode(mode) {
     document.querySelectorAll('.view-toggle-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.mode === mode);
     });
-    document.querySelector('.save-bar').style.display = mode === 'cards' ? 'none' : 'flex';
     if (!lastApiResponse) return;
     if (mode === 'cards') {
         renderInventoryCards(currentInventoryData);
@@ -2076,6 +2168,48 @@ function compareSizes(a, b) {
     return a.localeCompare(b);
 }
 
+// ── Check-off helpers (per-location localStorage) ──────────────────────────
+function getChecks() {
+    const locId = document.getElementById('filter-location').value;
+    try { return new Set(JSON.parse(localStorage.getItem('inventory_checks_' + locId) || '[]')); }
+    catch(e) { return new Set(); }
+}
+
+function persistChecks(checks) {
+    const locId = document.getElementById('filter-location').value;
+    localStorage.setItem('inventory_checks_' + locId, JSON.stringify([...checks]));
+}
+
+function toggleCheck(productId, btn) {
+    const checks = getChecks();
+    const nowChecked = !checks.has(productId);
+    nowChecked ? checks.add(productId) : checks.delete(productId);
+    persistChecks(checks);
+
+    const cell = btn.closest('.qty-cell');
+    cell.classList.toggle('cell-checked', nowChecked);
+    btn.classList.toggle('checked', nowChecked);
+    btn.title = nowChecked ? 'Unmark as ordered' : 'Mark as ordered';
+}
+
+function clearAllChecks() {
+    const locId = document.getElementById('filter-location').value;
+    localStorage.removeItem('inventory_checks_' + locId);
+    renderInventoryCards(currentInventoryData);
+}
+
+function updateCardCellStyle(input) {
+    const cell = input.closest('.qty-cell');
+    if (!cell) return;
+    const product = currentInventoryData.find(p => p.product_id == input.dataset.productId);
+    const threshold = product ? product.low_stock_threshold : 8;
+    const qty = parseInt(input.value) || 0;
+    cell.classList.remove('qty-zero', 'qty-low');
+    if (qty === 0) cell.classList.add('qty-zero');
+    else if (qty < threshold) cell.classList.add('qty-low');
+}
+
+// ── Main card renderer ──────────────────────────────────────────────────────
 function renderInventoryCards(items) {
     const tableWrapper = document.getElementById('inventory-table-wrapper');
     const cardsWrapper = document.getElementById('inventory-cards-wrapper');
@@ -2087,6 +2221,8 @@ function renderInventoryCards(items) {
         cardsWrapper.innerHTML = '<p style="color:#adb5bd;text-align:center;padding:40px;">No products found</p>';
         return;
     }
+
+    const checks = getChecks();
 
     // Count categories per name to detect multi-variant categories
     const catVariantCounts = {};
@@ -2101,28 +2237,19 @@ function renderInventoryCards(items) {
     items.forEach(item => {
         const key = item.category_name + '|' + item.variant_type;
         if (!groups[key]) {
-            groups[key] = {
-                category_name: item.category_name,
-                variant_type: item.variant_type,
-                items: []
-            };
+            groups[key] = { category_name: item.category_name, variant_type: item.variant_type, items: [] };
         }
         groups[key].items.push(item);
     });
 
-    // Collect all sizes and colors per group, count alerts
     let totalCritical = 0;
     let totalLow = 0;
 
     const groupList = Object.values(groups).map(group => {
         const sizes = [...new Set(group.items.map(i => i.size))].sort(compareSizes);
         const colors = [...new Set(group.items.map(i => i.color))].sort((a, b) => a.localeCompare(b));
-
-        // Build lookup
         const lookup = {};
-        group.items.forEach(item => {
-            lookup[item.size + '|' + item.color] = item;
-        });
+        group.items.forEach(item => { lookup[item.size + '|' + item.color] = item; });
 
         let alerts = 0;
         group.items.forEach(item => {
@@ -2133,16 +2260,17 @@ function renderInventoryCards(items) {
         return { ...group, sizes, colors, lookup, alerts };
     });
 
-    // Sort by urgency (most alerts first)
     groupList.sort((a, b) => b.alerts - a.alerts);
 
     // Summary banner
+    const hasChecks = checks.size > 0;
     let summaryHtml = '';
-    if (totalCritical > 0 || totalLow > 0) {
+    if (totalCritical > 0 || totalLow > 0 || hasChecks) {
         summaryHtml = `<div class="buying-summary-banner">
-            <i class="fas fa-exclamation-triangle"></i>
+            ${totalCritical > 0 || totalLow > 0 ? '<i class="fas fa-exclamation-triangle"></i>' : ''}
             ${totalCritical > 0 ? `<span class="stat-critical"><i class="fas fa-times-circle"></i> ${totalCritical} out of stock</span>` : ''}
             ${totalLow > 0 ? `<span class="stat-low"><i class="fas fa-exclamation-circle"></i> ${totalLow} low stock</span>` : ''}
+            ${hasChecks ? `<button class="clear-checks-btn" onclick="clearAllChecks()"><i class="fas fa-times"></i> Clear ${checks.size} check${checks.size > 1 ? 's' : ''}</button>` : ''}
         </div>`;
     }
 
@@ -2161,7 +2289,6 @@ function renderInventoryCards(items) {
             ? `<span class="alert-badge">${group.alerts} alert${group.alerts > 1 ? 's' : ''}</span>`
             : '';
 
-        // Matrix header row
         let matrixHtml = '<table class="buying-matrix"><thead><tr>';
         matrixHtml += '<th class="size-col">Size</th>';
         group.colors.forEach(color => {
@@ -2169,7 +2296,6 @@ function renderInventoryCards(items) {
         });
         matrixHtml += '</tr></thead><tbody>';
 
-        // Matrix rows
         group.sizes.forEach(size => {
             matrixHtml += `<tr><td class="size-label">${escapeHtml(size || '—')}</td>`;
             group.colors.forEach(color => {
@@ -2177,10 +2303,22 @@ function renderInventoryCards(items) {
                 if (!item) {
                     matrixHtml += '<td class="qty-cell no-product">—</td>';
                 } else {
+                    const isChecked = checks.has(item.product_id);
                     let cellClass = 'qty-cell';
                     if (item.current_qty === 0) cellClass += ' qty-zero';
                     else if (item.current_qty < item.low_stock_threshold) cellClass += ' qty-low';
-                    matrixHtml += `<td class="${cellClass}">${item.current_qty}</td>`;
+                    if (isChecked) cellClass += ' cell-checked';
+
+                    matrixHtml += `<td class="${cellClass}" data-product-id="${item.product_id}">
+                        <input type="number" class="stock-input card-qty-input"
+                               value="${item.current_qty}" min="0"
+                               data-product-id="${item.product_id}"
+                               data-original="${item.current_qty}"
+                               onchange="markUnsaved(); updateCardCellStyle(this)">
+                        <button class="cell-check-btn${isChecked ? ' checked' : ''}"
+                                onclick="toggleCheck(${item.product_id}, this)"
+                                title="${isChecked ? 'Unmark as ordered' : 'Mark as ordered'}">✓</button>
+                    </td>`;
                 }
             });
             matrixHtml += '</tr>';
