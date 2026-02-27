@@ -909,9 +909,10 @@ $extraCss = <<<CSS
     .buying-summary-banner .stat-low { color: #b8860b; }
 
     .buying-cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 20px;
+        align-items: flex-start;
     }
 
     .buying-card {
@@ -920,6 +921,10 @@ $extraCss = <<<CSS
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         overflow: hidden;
+        flex: 0 0 auto;
+        width: max-content;
+        min-width: 280px;
+        max-width: 100%;
     }
 
     .buying-card-header {
