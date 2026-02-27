@@ -948,6 +948,12 @@ $extraCss = <<<CSS
         width: 44px;
     }
 
+    .buying-card.card-wide .buying-matrix th {
+        white-space: normal;
+        padding: 6px 3px;
+        line-height: 1.2;
+    }
+
     .buying-card-header {
         background: linear-gradient(135deg, #1a202c, #2d3748);
         color: white;
@@ -2351,7 +2357,7 @@ function renderInventoryCards(items) {
         let matrixHtml = '<table class="buying-matrix"><thead><tr>';
         matrixHtml += '<th class="size-col">Size</th>';
         group.colors.forEach(color => {
-            matrixHtml += `<th>${escapeHtml(color || '—')}</th>`;
+            matrixHtml += `<th>${escapeHtml(color || '—').replace('/', '/<wbr>')}</th>`;
         });
         matrixHtml += '</tr></thead><tbody>';
 
